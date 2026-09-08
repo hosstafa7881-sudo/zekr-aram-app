@@ -15,6 +15,7 @@ import {
 } from './lib/db';
 import { DhikrItem, INITIAL_DHIKR_LIST, TargetMode } from './lib/seedData';
 import { setScreenWakeLock } from './lib/haptics';
+import { applyTheme } from './lib/theme';
 import { AppHeader } from './components/AppHeader';
 import { BottomNav, AppTab } from './components/BottomNav';
 import { CounterView } from './features/counter/CounterView';
@@ -68,6 +69,11 @@ export function App() {
   useEffect(() => {
     saveSettings(settings);
   }, [settings]);
+
+  // Apply day/night mode + color palette as DOM attributes
+  useEffect(() => {
+    applyTheme(settings.themeMode, settings.colorPalette);
+  }, [settings.themeMode, settings.colorPalette]);
 
   const activeDhikr =
     dhikrs.find((d) => d.id === activeDhikrId) || dhikrs[0] || INITIAL_DHIKR_LIST[0];
@@ -222,7 +228,7 @@ export function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#091410] text-[#F3F7F4] flex flex-col justify-between antialiased">
+    <div className="min-h-screen bg-[var(--bg)] text-[var(--text)] flex flex-col justify-between antialiased">
       {/* Top Sanctuary Header */}
       <AppHeader />
 

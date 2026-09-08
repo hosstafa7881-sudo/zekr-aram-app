@@ -36,16 +36,16 @@ export const TargetConfigModal: React.FC<TargetConfigModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4">
-      <div className="w-full max-w-md bg-[#11221B] border border-[#D4AF37]/30 rounded-3xl p-5 shadow-2xl">
-        <div className="flex items-center justify-between pb-3 border-b border-[#1C352B]">
+      <div className="w-full max-w-md bg-[var(--surface)] border border-[var(--accent)]/30 rounded-3xl p-5 shadow-2xl">
+        <div className="flex items-center justify-between pb-3 border-b border-[var(--border)]">
           <div className="flex items-center gap-2">
-            <Target className="w-5 h-5 text-[#D4AF37]" />
-            <h3 className="text-base font-bold text-[#F3F7F4]">تنظیم هدف اختصاصی ذکر</h3>
+            <Target className="w-5 h-5 text-[var(--accent)]" />
+            <h3 className="text-base font-bold text-[var(--text)]">تنظیم هدف اختصاصی ذکر</h3>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-xl text-[#94B2A3] hover:text-[#F3F7F4] hover:bg-[#1C352B]"
+            className="p-1.5 rounded-xl text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--border)]"
           >
             <X className="w-5 h-5" />
           </button>
@@ -53,8 +53,8 @@ export const TargetConfigModal: React.FC<TargetConfigModalProps> = ({
 
         <form onSubmit={handleSubmit} className="mt-4 space-y-4">
           <div>
-            <p className="text-xs text-[#94B2A3] mb-2">
-              هدف فعلی برای <span className="text-[#D4AF37] font-semibold">«{dhikrTitle}»</span>:
+            <p className="text-xs text-[var(--muted)] mb-2">
+              هدف فعلی برای <span className="text-[var(--accent)] font-semibold">«{dhikrTitle}»</span>:
             </p>
             <div className="grid grid-cols-6 gap-1.5 mb-3">
               {PRESET_TARGETS.map((preset) => (
@@ -64,8 +64,8 @@ export const TargetConfigModal: React.FC<TargetConfigModalProps> = ({
                   onClick={() => setTarget(preset)}
                   className={`py-2 rounded-xl text-xs font-bold tabular-nums-fa border transition-all ${
                     target === preset
-                      ? 'bg-[#D4AF37] text-[#091410] border-[#D4AF37]'
-                      : 'bg-[#091410] text-[#F3F7F4] border-[#1C352B] hover:border-[#D4AF37]/50'
+                      ? 'bg-[var(--accent)] text-[var(--bg)] border-[var(--accent)]'
+                      : 'bg-[var(--bg)] text-[var(--text)] border-[var(--border)] hover:border-[var(--accent)]/50'
                   }`}
                 >
                   {toPersianDigits(preset)}
@@ -73,19 +73,19 @@ export const TargetConfigModal: React.FC<TargetConfigModalProps> = ({
               ))}
             </div>
 
-            <label className="block text-xs text-[#94B2A3] mb-1">یا عدد دلخواه را وارد کنید:</label>
+            <label className="block text-xs text-[var(--muted)] mb-1">یا عدد دلخواه را وارد کنید:</label>
             <input
               type="number"
               min={1}
               max={100000}
               value={target}
               onChange={(e) => setTarget(Math.max(1, parseInt(e.target.value, 10) || 1))}
-              className="w-full bg-[#091410] border border-[#1C352B] focus:border-[#D4AF37] rounded-xl px-3.5 py-2.5 text-center text-lg font-bold text-[#F3F7F4] outline-none tabular-nums-fa"
+              className="w-full bg-[var(--bg)] border border-[var(--border)] focus:border-[var(--accent)] rounded-xl px-3.5 py-2.5 text-center text-lg font-bold text-[var(--text)] outline-none tabular-nums-fa"
             />
           </div>
 
           <div className="space-y-2">
-            <label className="block text-xs font-semibold text-[#94B2A3]">
+            <label className="block text-xs font-semibold text-[var(--muted)]">
               رفتار شمارنده پس از رسیدن به هدف:
             </label>
 
@@ -93,8 +93,8 @@ export const TargetConfigModal: React.FC<TargetConfigModalProps> = ({
               onClick={() => setMode('notify-continue')}
               className={`flex items-start gap-3 p-3 rounded-2xl border cursor-pointer transition-all ${
                 mode === 'notify-continue'
-                  ? 'bg-[#D4AF37]/15 border-[#D4AF37] text-[#F3F7F4]'
-                  : 'bg-[#091410]/60 border-[#1C352B] text-[#94B2A3]'
+                  ? 'bg-[var(--accent)]/15 border-[var(--accent)] text-[var(--text)]'
+                  : 'bg-[var(--bg)]/60 border-[var(--border)] text-[var(--muted)]'
               }`}
             >
               <input
@@ -102,11 +102,11 @@ export const TargetConfigModal: React.FC<TargetConfigModalProps> = ({
                 name="targetMode"
                 checked={mode === 'notify-continue'}
                 onChange={() => setMode('notify-continue')}
-                className="mt-1 accent-[#D4AF37]"
+                className="mt-1 accent-[var(--accent)]"
               />
               <div>
-                <div className="text-xs font-bold text-[#F3F7F4]">هشدار ویبره/صدا و ادامهٔ شمارش</div>
-                <div className="text-[11px] text-[#94B2A3] mt-0.5">
+                <div className="text-xs font-bold text-[var(--text)]">هشدار ویبره/صدا و ادامهٔ شمارش</div>
+                <div className="text-[11px] text-[var(--muted)] mt-0.5">
                   وقتی به هدف رسیدید با ویبره و زنگ ملایم خبر می‌دهد و شمارش بدون توقف ادامه می‌یابد.
                 </div>
               </div>
@@ -116,8 +116,8 @@ export const TargetConfigModal: React.FC<TargetConfigModalProps> = ({
               onClick={() => setMode('stop')}
               className={`flex items-start gap-3 p-3 rounded-2xl border cursor-pointer transition-all ${
                 mode === 'stop'
-                  ? 'bg-[#D4AF37]/15 border-[#D4AF37] text-[#F3F7F4]'
-                  : 'bg-[#091410]/60 border-[#1C352B] text-[#94B2A3]'
+                  ? 'bg-[var(--accent)]/15 border-[var(--accent)] text-[var(--text)]'
+                  : 'bg-[var(--bg)]/60 border-[var(--border)] text-[var(--muted)]'
               }`}
             >
               <input
@@ -125,11 +125,11 @@ export const TargetConfigModal: React.FC<TargetConfigModalProps> = ({
                 name="targetMode"
                 checked={mode === 'stop'}
                 onChange={() => setMode('stop')}
-                className="mt-1 accent-[#D4AF37]"
+                className="mt-1 accent-[var(--accent)]"
               />
               <div>
-                <div className="text-xs font-bold text-[#F3F7F4]">توقف در پایان هدف</div>
-                <div className="text-[11px] text-[#94B2A3] mt-0.5">
+                <div className="text-xs font-bold text-[var(--text)]">توقف در پایان هدف</div>
+                <div className="text-[11px] text-[var(--muted)] mt-0.5">
                   روی عدد هدف می‌ایستد تا متوجه پایان ختم شوید (مناسب تسبیحات حضرت زهرا).
                 </div>
               </div>
@@ -139,8 +139,8 @@ export const TargetConfigModal: React.FC<TargetConfigModalProps> = ({
               onClick={() => setMode('loop')}
               className={`flex items-start gap-3 p-3 rounded-2xl border cursor-pointer transition-all ${
                 mode === 'loop'
-                  ? 'bg-[#D4AF37]/15 border-[#D4AF37] text-[#F3F7F4]'
-                  : 'bg-[#091410]/60 border-[#1C352B] text-[#94B2A3]'
+                  ? 'bg-[var(--accent)]/15 border-[var(--accent)] text-[var(--text)]'
+                  : 'bg-[var(--bg)]/60 border-[var(--border)] text-[var(--muted)]'
               }`}
             >
               <input
@@ -148,11 +148,11 @@ export const TargetConfigModal: React.FC<TargetConfigModalProps> = ({
                 name="targetMode"
                 checked={mode === 'loop'}
                 onChange={() => setMode('loop')}
-                className="mt-1 accent-[#D4AF37]"
+                className="mt-1 accent-[var(--accent)]"
               />
               <div>
-                <div className="text-xs font-bold text-[#F3F7F4]">شمارش چرخشی (دور جدید خودکار)</div>
-                <div className="text-[11px] text-[#94B2A3] mt-0.5">
+                <div className="text-xs font-bold text-[var(--text)]">شمارش چرخشی (دور جدید خودکار)</div>
+                <div className="text-[11px] text-[var(--muted)] mt-0.5">
                   پس از رسیدن به هدف، هشدار می‌دهد و شمارنده برای دور بعدی از ۱ شروع می‌شود.
                 </div>
               </div>
@@ -163,13 +163,13 @@ export const TargetConfigModal: React.FC<TargetConfigModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-2.5 rounded-xl bg-[#091410] border border-[#1C352B] text-xs font-bold text-[#94B2A3] hover:text-[#F3F7F4]"
+              className="flex-1 py-2.5 rounded-xl bg-[var(--bg)] border border-[var(--border)] text-xs font-bold text-[var(--muted)] hover:text-[var(--text)]"
             >
               انصراف
             </button>
             <button
               type="submit"
-              className="flex-1 py-2.5 rounded-xl bg-[#D4AF37] text-[#091410] text-xs font-bold flex items-center justify-center gap-1.5 shadow-lg shadow-[#D4AF37]/20 hover:bg-[#E6C987]"
+              className="flex-1 py-2.5 rounded-xl bg-[var(--accent)] text-[var(--bg)] text-xs font-bold flex items-center justify-center gap-1.5 shadow-lg shadow-[var(--accent)]/20 hover:bg-[var(--accent-light)]"
             >
               <Check className="w-4 h-4" />
               ذخیره هدف

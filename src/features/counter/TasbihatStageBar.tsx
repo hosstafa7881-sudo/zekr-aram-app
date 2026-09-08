@@ -81,15 +81,15 @@ export const TasbihatStageBar: React.FC<TasbihatStageBarProps> = ({ totalCount }
   ];
 
   return (
-    <div className="w-full bg-[#11221B]/90 border border-[#D4AF37]/30 rounded-2xl p-3 mb-2">
+    <div className="w-full bg-[var(--surface)]/90 border border-[var(--accent)]/30 rounded-2xl p-3 mb-2">
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
-          <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-[#D4AF37]/20 text-[#D4AF37] text-xs font-bold">
+          <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-[var(--accent)]/20 text-[var(--accent)] text-xs font-bold">
             {toPersianDigits(detail.stageNumber)}
           </span>
-          <span className="text-sm font-bold text-[#F3F7F4]">{detail.persianTitle}</span>
+          <span className="text-sm font-bold text-[var(--text)]">{detail.persianTitle}</span>
         </div>
-        <div className="text-xs font-semibold text-[#D4AF37] tabular-nums-fa">
+        <div className="text-xs font-semibold text-[var(--accent)] tabular-nums-fa">
           {toPersianDigits(detail.stageCount)} از {toPersianDigits(detail.stageTarget)}
         </div>
       </div>
@@ -100,14 +100,14 @@ export const TasbihatStageBar: React.FC<TasbihatStageBarProps> = ({ totalCount }
             key={st.num}
             className={`flex flex-col items-center justify-center p-2 rounded-xl border transition-all ${
               st.done
-                ? 'bg-[#10B981]/15 border-[#10B981]/40 text-[#10B981]'
+                ? 'bg-[var(--success)]/15 border-[var(--success)]/40 text-[var(--success)]'
                 : st.current
-                ? 'bg-[#D4AF37]/15 border-[#D4AF37] text-[#F3F7F4] shadow-sm'
-                : 'bg-[#091410]/60 border-[#1C352B] text-[#94B2A3]/60'
+                ? 'bg-[var(--accent)]/15 border-[var(--accent)] text-[var(--text)] shadow-sm'
+                : 'bg-[var(--bg)]/60 border-[var(--border)] text-[var(--muted)]/60'
             }`}
           >
             <div className="flex items-center gap-1 text-xs font-bold">
-              {st.done && <CheckCircle2 className="w-3.5 h-3.5 text-[#10B981]" />}
+              {st.done && <CheckCircle2 className="w-3.5 h-3.5 text-[var(--success)]" />}
               <span>{st.label}</span>
             </div>
             <div className="text-[11px] tabular-nums-fa mt-0.5 opacity-90">

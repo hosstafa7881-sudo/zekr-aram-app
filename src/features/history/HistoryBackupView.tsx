@@ -121,41 +121,41 @@ export const HistoryBackupView: React.FC<HistoryBackupViewProps> = ({
     <div className="flex flex-col flex-1 w-full max-w-2xl mx-auto px-3 pt-2 pb-6 space-y-4">
       {/* Top Summary Cards */}
       <div className="grid grid-cols-2 gap-3">
-        <div className="bg-[#11221B] border border-[#D4AF37]/30 rounded-2xl p-4 flex flex-col justify-between">
-          <div className="flex items-center justify-between text-[#94B2A3] text-xs mb-1">
+        <div className="bg-[var(--surface)] border border-[var(--accent)]/30 rounded-2xl p-4 flex flex-col justify-between">
+          <div className="flex items-center justify-between text-[var(--muted)] text-xs mb-1">
             <span>ذکرهای امروز</span>
-            <Calendar className="w-4 h-4 text-[#D4AF37]" />
+            <Calendar className="w-4 h-4 text-[var(--accent)]" />
           </div>
-          <div className="text-3xl font-black text-[#F3F7F4] tabular-nums-fa">
+          <div className="text-3xl font-black text-[var(--text)] tabular-nums-fa">
             {toPersianDigits(todayCount)}
           </div>
-          <div className="text-[11px] text-[#D4AF37] mt-1">
+          <div className="text-[11px] text-[var(--accent)] mt-1">
             {shamsiToday.formattedFull}
           </div>
         </div>
 
-        <div className="bg-[#11221B] border border-[#1C352B] rounded-2xl p-4 flex flex-col justify-between">
-          <div className="flex items-center justify-between text-[#94B2A3] text-xs mb-1">
+        <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-4 flex flex-col justify-between">
+          <div className="flex items-center justify-between text-[var(--muted)] text-xs mb-1">
             <span>مجموع کل ذکرها</span>
-            <Award className="w-4 h-4 text-[#10B981]" />
+            <Award className="w-4 h-4 text-[var(--success)]" />
           </div>
-          <div className="text-3xl font-black text-[#D4AF37] tabular-nums-fa">
+          <div className="text-3xl font-black text-[var(--accent)] tabular-nums-fa">
             {toPersianDigits(totalLifetimeCount)}
           </div>
-          <div className="text-[11px] text-[#94B2A3] mt-1">
+          <div className="text-[11px] text-[var(--muted)] mt-1">
             ذخیره خودکار و دائمی روی دستگاه
           </div>
         </div>
       </div>
 
       {/* 7-Day Shamsi Visual Bar Chart */}
-      <div className="bg-[#11221B] border border-[#1C352B] rounded-2xl p-4">
+      <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-4">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <BarChart3 className="w-4 h-4 text-[#D4AF37]" />
-            <h3 className="text-sm font-bold text-[#F3F7F4]">نمودار ۷ روز اخیر (تقویم شمسی)</h3>
+            <BarChart3 className="w-4 h-4 text-[var(--accent)]" />
+            <h3 className="text-sm font-bold text-[var(--text)]">نمودار ۷ روز اخیر (تقویم شمسی)</h3>
           </div>
-          <span className="text-xs text-[#94B2A3]">بر اساس روز</span>
+          <span className="text-xs text-[var(--muted)]">بر اساس روز</span>
         </div>
 
         <div className="grid grid-cols-7 gap-2 items-end h-36 pt-4 pb-1 px-1">
@@ -165,29 +165,29 @@ export const HistoryBackupView: React.FC<HistoryBackupViewProps> = ({
 
             return (
               <div key={day.dateKey} className="flex flex-col items-center h-full justify-end">
-                <div className="text-[10px] font-bold text-[#94B2A3] tabular-nums-fa mb-1">
+                <div className="text-[10px] font-bold text-[var(--muted)] tabular-nums-fa mb-1">
                   {day.count > 0 ? toPersianDigits(day.count) : ''}
                 </div>
-                <div className="w-full max-w-[28px] bg-[#091410] rounded-t-lg h-24 flex items-end overflow-hidden border border-[#1C352B]">
+                <div className="w-full max-w-[28px] bg-[var(--bg)] rounded-t-lg h-24 flex items-end overflow-hidden border border-[var(--border)]">
                   <div
                     style={{ height: `${heightPct}%` }}
                     className={`w-full rounded-t-md transition-all duration-300 ${
                       isToday
-                        ? 'bg-gradient-to-t from-[#9A7821] to-[#D4AF37]'
+                        ? 'bg-gradient-to-t from-[var(--accent-dark)] to-[var(--accent)]'
                         : day.count > 0
-                        ? 'bg-[#10B981]/70'
-                        : 'bg-[#1C352B]'
+                        ? 'bg-[var(--success)]/70'
+                        : 'bg-[var(--border)]'
                     }`}
                   />
                 </div>
                 <div
                   className={`text-[10px] font-bold mt-1.5 ${
-                    isToday ? 'text-[#D4AF37]' : 'text-[#94B2A3]'
+                    isToday ? 'text-[var(--accent)]' : 'text-[var(--muted)]'
                   }`}
                 >
                   {day.weekdayName}
                 </div>
-                <div className="text-[9px] text-[#94B2A3]/70 tabular-nums-fa">
+                <div className="text-[9px] text-[var(--muted)]/70 tabular-nums-fa">
                   {toPersianDigits(day.dayNum)} {day.monthName}
                 </div>
               </div>
@@ -197,11 +197,11 @@ export const HistoryBackupView: React.FC<HistoryBackupViewProps> = ({
       </div>
 
       {/* Backup & Restore Card (Anti-Data-Loss Guarantee) */}
-      <div className="bg-[#11221B] border border-[#D4AF37]/35 rounded-2xl p-4">
-        <h3 className="text-sm font-bold text-[#F3F7F4] mb-1">
+      <div className="bg-[var(--surface)] border border-[var(--accent)]/35 rounded-2xl p-4">
+        <h3 className="text-sm font-bold text-[var(--text)] mb-1">
           پشتیبان‌گیری و انتقال امن اطلاعات (JSON)
         </h3>
-        <p className="text-xs text-[#94B2A3] leading-relaxed mb-3.5">
+        <p className="text-xs text-[var(--muted)] leading-relaxed mb-3.5">
           تمام آمار و ذکرهای شما به صورت خودکار در حافظهٔ مرورگر (IndexedDB) ذخیره می‌شوند. برای اطمینان ۱۰۰٪ هنگام تعویض گوشی یا بروزرسانی، می‌توانید فایل پشتیبان تهیه کنید.
         </p>
 
@@ -209,8 +209,8 @@ export const HistoryBackupView: React.FC<HistoryBackupViewProps> = ({
           <div
             className={`flex items-center gap-2 p-3 rounded-xl text-xs font-bold mb-3 border ${
               statusMessage.type === 'success'
-                ? 'bg-[#10B981]/15 border-[#10B981] text-[#10B981]'
-                : 'bg-[#EF4444]/15 border-[#EF4444] text-[#EF4444]'
+                ? 'bg-[var(--success)]/15 border-[var(--success)] text-[var(--success)]'
+                : 'bg-[var(--danger)]/15 border-[var(--danger)] text-[var(--danger)]'
             }`}
           >
             {statusMessage.type === 'success' ? (
@@ -226,7 +226,7 @@ export const HistoryBackupView: React.FC<HistoryBackupViewProps> = ({
           <button
             type="button"
             onClick={handleExportJSON}
-            className="flex items-center justify-center gap-2 bg-[#D4AF37] hover:bg-[#E6C987] text-[#091410] text-xs font-bold py-3 px-4 rounded-xl shadow-md transition-all"
+            className="flex items-center justify-center gap-2 bg-[var(--accent)] hover:bg-[var(--accent-light)] text-[var(--bg)] text-xs font-bold py-3 px-4 rounded-xl shadow-md transition-all"
           >
             <Download className="w-4 h-4" />
             <span>دانلود فایل پشتیبان (JSON)</span>
@@ -235,9 +235,9 @@ export const HistoryBackupView: React.FC<HistoryBackupViewProps> = ({
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="flex items-center justify-center gap-2 bg-[#091410] hover:bg-[#162B23] text-[#F3F7F4] border border-[#D4AF37]/40 text-xs font-bold py-3 px-4 rounded-xl transition-all"
+            className="flex items-center justify-center gap-2 bg-[var(--bg)] hover:bg-[var(--surface-2)] text-[var(--text)] border border-[var(--accent)]/40 text-xs font-bold py-3 px-4 rounded-xl transition-all"
           >
-            <Upload className="w-4 h-4 text-[#D4AF37]" />
+            <Upload className="w-4 h-4 text-[var(--accent)]" />
             <span>بازگردانی از فایل پشتیبان</span>
           </button>
           <input
@@ -251,13 +251,13 @@ export const HistoryBackupView: React.FC<HistoryBackupViewProps> = ({
       </div>
 
       {/* Daily Breakdown Log List */}
-      <div className="bg-[#11221B] border border-[#1C352B] rounded-2xl p-4">
-        <h3 className="text-sm font-bold text-[#F3F7F4] mb-3">
+      <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-4">
+        <h3 className="text-sm font-bold text-[var(--text)] mb-3">
           ریز آمار روزهای گذشته
         </h3>
 
         {dailyLogs.length === 0 ? (
-          <p className="text-xs text-[#94B2A3] text-center py-6">
+          <p className="text-xs text-[var(--muted)] text-center py-6">
             هنوز آماری ثبت نشده است. با اولین ضربه روی شمارنده، آمار امروز ثبت می‌شود.
           </p>
         ) : (
@@ -265,13 +265,13 @@ export const HistoryBackupView: React.FC<HistoryBackupViewProps> = ({
             {dailyLogs.slice(0, 14).map((log) => (
               <div
                 key={log.dateKey}
-                className="bg-[#091410]/80 border border-[#1C352B] rounded-xl p-3"
+                className="bg-[var(--bg)]/80 border border-[var(--border)] rounded-xl p-3"
               >
                 <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-xs font-bold text-[#F3F7F4]">
+                  <span className="text-xs font-bold text-[var(--text)]">
                     {log.shamsiDate}
                   </span>
-                  <span className="text-xs font-extrabold text-[#D4AF37] tabular-nums-fa">
+                  <span className="text-xs font-extrabold text-[var(--accent)] tabular-nums-fa">
                     مجموع: {toPersianDigits(log.totalCount)} ذکر
                   </span>
                 </div>
@@ -279,10 +279,10 @@ export const HistoryBackupView: React.FC<HistoryBackupViewProps> = ({
                   {Object.entries(log.breakdown).map(([id, item]) => (
                     <span
                       key={id}
-                      className="inline-flex items-center gap-1 bg-[#11221B] text-[#94B2A3] text-[11px] px-2 py-0.5 rounded-lg border border-[#1C352B] tabular-nums-fa"
+                      className="inline-flex items-center gap-1 bg-[var(--surface)] text-[var(--muted)] text-[11px] px-2 py-0.5 rounded-lg border border-[var(--border)] tabular-nums-fa"
                     >
                       <span>{item.title}:</span>
-                      <strong className="text-[#F3F7F4]">
+                      <strong className="text-[var(--text)]">
                         {toPersianDigits(item.count)}
                       </strong>
                     </span>

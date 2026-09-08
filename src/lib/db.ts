@@ -16,6 +16,11 @@ export interface UserSettings {
   showDiacritics: boolean;
   fullScreenTapArea: boolean;
   onboardingSeen: boolean;
+  themeMode: 'day' | 'night';
+  colorPalette: string;
+  reminderEnabled: boolean;
+  reminderTime: string;
+  isProUser: boolean;
 }
 
 export interface BackupPayload {
@@ -25,6 +30,8 @@ export interface BackupPayload {
   activeDhikrId: string;
   dailyLogs: DailyLog[];
   settings: UserSettings;
+  notebookItems?: import('../features/notebook/notebookTypes').NotebookItemDef[];
+  notebookEntries?: import('../features/notebook/notebookTypes').NotebookDayEntry[];
 }
 
 const STORAGE_KEYS = {
@@ -42,6 +49,11 @@ export const DEFAULT_SETTINGS: UserSettings = {
   showDiacritics: true,
   fullScreenTapArea: true,
   onboardingSeen: false,
+  themeMode: 'night',
+  colorPalette: 'emerald',
+  reminderEnabled: false,
+  reminderTime: '20:00',
+  isProUser: false,
 };
 
 // IndexedDB helper for background durability
@@ -191,10 +203,15 @@ export function recordDhikrIncrementInDailyLog(
     });
   }
 
-  // Keep last 90 days
-  const trimmed = updatedLogs.slice(0, 90);
-  saveDailyLogs(trimmed);
-  return trimmed;
+  // Full unlimited history is kept — no trimming.
+  saveDailyLogs(updatedLogs);
+  return updatedLogs;
+}
+
+export function deleteDailyLog(dateKey: string, currentLogs: DailyLog[]): DailyLog[] {
+  const filtered = currentLogs.filter((log) => log.dateKey !== dateKey);
+  saveDailyLogs(filtered);
+  return filtered;
 }
 
 export function loadSettings(): UserSettings {
@@ -220,15 +237,19 @@ export function exportBackupJSON(
   dhikrs: DhikrItem[],
   activeDhikrId: string,
   dailyLogs: DailyLog[],
-  settings: UserSettings
+  settings: UserSettings,
+  notebookItems?: import('../features/notebook/notebookTypes').NotebookItemDef[],
+  notebookEntries?: import('../features/notebook/notebookTypes').NotebookDayEntry[]
 ): string {
   const payload: BackupPayload = {
-    version: 1,
+    version: 2,
     exportedAt: new Date().toISOString(),
     dhikrs,
     activeDhikrId,
     dailyLogs,
     settings,
+    notebookItems,
+    notebookEntries,
   };
   return JSON.stringify(payload, null, 2);
 }
@@ -248,5 +269,7 @@ export function parseAndValidateBackupJSON(jsonString: string): BackupPayload {
     activeDhikrId: parsed.activeDhikrId || parsed.dhikrs[0].id,
     dailyLogs: Array.isArray(parsed.dailyLogs) ? parsed.dailyLogs : [],
     settings: { ...DEFAULT_SETTINGS, ...(parsed.settings || {}) },
+    notebookItems: Array.isArray(parsed.notebookItems) ? parsed.notebookItems : undefined,
+    notebookEntries: Array.isArray(parsed.notebookEntries) ? parsed.notebookEntries : undefined,
   };
 }
