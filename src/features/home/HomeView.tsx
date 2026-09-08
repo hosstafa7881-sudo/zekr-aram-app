@@ -74,6 +74,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
         </div>
         <button
           type="button"
+          data-tour="home-bell"
           onClick={() => setIsBellOpen(true)}
           title="اعلانات و مناسبت‌های مذهبی"
           aria-label="اعلانات و مناسبت‌های مذهبی"
@@ -84,7 +85,10 @@ export const HomeView: React.FC<HomeViewProps> = ({
       </div>
 
       {/* Today summary + continue button */}
-      <div className="bg-gradient-to-br from-[var(--surface-2)] to-[var(--surface)] border border-[var(--accent)]/30 rounded-3xl p-5 shadow-lg">
+      <div
+        data-tour="home-today-card"
+        className="bg-gradient-to-br from-[var(--surface-2)] to-[var(--surface)] border border-[var(--accent)]/30 rounded-3xl p-5 shadow-lg"
+      >
         <div className="text-xs text-[var(--muted)] mb-1">مجموع ذکر امروز شما</div>
         <div className="text-4xl font-black text-[var(--accent)] tabular-nums-fa mb-4">
           {toPersianDigits(todayCount)}

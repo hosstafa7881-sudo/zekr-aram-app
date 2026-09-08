@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
 import { UserSettings } from '../../lib/db';
+import { PALETTE_OPTIONS } from '../../lib/theme';
+import { LockedFeatureId, getFeatureLockState, getTrialDaysRemaining } from '../../lib/subscription';
+import { toPersianDigits } from '../../utils/persian';
 import {
   Vibrate,
   Volume2,
@@ -8,6 +11,10 @@ import {
   ShieldAlert,
   Info,
   DownloadCloud,
+  Moon,
+  Palette,
+  Crown,
+  Check,
 } from 'lucide-react';
 
 interface SettingsViewProps {
@@ -16,6 +23,8 @@ interface SettingsViewProps {
   onHardResetAllData: () => void;
   onInstallPWA?: () => void;
   canInstallPWA: boolean;
+  guard: (featureId: LockedFeatureId, onAllowed: () => void) => void;
+  onGoToPaywall: () => void;
 }
 
 export const SettingsView: React.FC<SettingsViewProps> = ({
@@ -24,8 +33,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   onHardResetAllData,
   onInstallPWA,
   canInstallPWA,
+  guard,
+  onGoToPaywall,
 }) => {
   const [confirmHardReset, setConfirmHardReset] = useState(false);
+  const lockState = getFeatureLockState(settings.isProUser);
+  const daysRemaining = getTrialDaysRemaining();
 
   const toggleBool = (key: keyof UserSettings) => {
     onUpdateSettings({
@@ -76,6 +89,111 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </p>
           </div>
         )}
+      </div>
+
+      {/* Subscription status card */}
+      <div className="bg-[var(--surface)] border border-[var(--accent)]/30 rounded-2xl p-4 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5">
+          <div className="w-10 h-10 rounded-2xl bg-[var(--accent)]/15 border border-[var(--accent)]/40 flex items-center justify-center text-[var(--accent)] shrink-0">
+            <Crown className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="text-xs font-bold text-[var(--text)]">
+              {settings.isProUser
+                ? 'مشترک ذکرآرام'
+                : lockState === 'locked'
+                ? 'دورهٔ آزمایشی رایگان تمام شد'
+                : 'دورهٔ آزمایشی رایگان'}
+            </div>
+            <div className="text-[11px] text-[var(--muted)] mt-0.5">
+              {settings.isProUser
+                ? 'همهٔ امکانات ویژه برای شما باز است'
+                : lockState === 'locked'
+                ? 'برای دسترسی به امکانات ویژه، اشتراک تهیه کنید'
+                : `${toPersianDigits(daysRemaining)} روز رایگان باقی مانده`}
+            </div>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={onGoToPaywall}
+          className="shrink-0 px-3.5 py-2 rounded-xl bg-[var(--accent)] hover:bg-[var(--accent-light)] text-[var(--bg)] text-xs font-bold"
+        >
+          مشاهده
+        </button>
+      </div>
+
+      {/* Appearance: Day/Night mode + color palette */}
+      <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-4 space-y-4">
+        <h3 className="text-sm font-bold text-[var(--text)] border-b border-[var(--border)] pb-2">
+          ظاهر و شخصی‌سازی
+        </h3>
+
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            {settings.themeMode === 'day' ? (
+              <Sun className="w-4 h-4 text-[var(--accent)]" />
+            ) : (
+              <Moon className="w-4 h-4 text-[var(--accent)]" />
+            )}
+            <span className="text-xs font-bold text-[var(--text)]">حالت نمایش صفحه</span>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => guard('day-night-mode', () => onUpdateSettings({ ...settings, themeMode: 'night' }))}
+              className={`flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold border transition-all ${
+                settings.themeMode === 'night'
+                  ? 'bg-[var(--accent)] text-[var(--bg)] border-[var(--accent)]'
+                  : 'bg-[var(--bg)] text-[var(--muted)] border-[var(--border)]'
+              }`}
+            >
+              <Moon className="w-3.5 h-3.5" />
+              حالت شب
+            </button>
+            <button
+              type="button"
+              onClick={() => guard('day-night-mode', () => onUpdateSettings({ ...settings, themeMode: 'day' }))}
+              className={`flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold border transition-all ${
+                settings.themeMode === 'day'
+                  ? 'bg-[var(--accent)] text-[var(--bg)] border-[var(--accent)]'
+                  : 'bg-[var(--bg)] text-[var(--muted)] border-[var(--border)]'
+              }`}
+            >
+              <Sun className="w-3.5 h-3.5" />
+              حالت روز
+            </button>
+          </div>
+        </div>
+
+        <div className="pt-2 border-t border-[var(--border)]">
+          <div className="flex items-center gap-2 mb-2">
+            <Palette className="w-4 h-4 text-[var(--accent)]" />
+            <span className="text-xs font-bold text-[var(--text)]">رنگ‌بندی پس‌زمینه</span>
+          </div>
+          <div className="grid grid-cols-4 gap-2">
+            {PALETTE_OPTIONS.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => guard('color-palette', () => onUpdateSettings({ ...settings, colorPalette: p.id }))}
+                title={p.label}
+                className={`relative flex flex-col items-center gap-1.5 py-2.5 rounded-xl border transition-all ${
+                  settings.colorPalette === p.id ? 'border-[var(--accent)]' : 'border-[var(--border)]'
+                }`}
+              >
+                <span
+                  className="w-6 h-6 rounded-full"
+                  style={{ backgroundColor: p.swatch }}
+                />
+                {settings.colorPalette === p.id && (
+                  <Check className="w-3 h-3 text-[var(--accent)] absolute top-1 left-1" />
+                )}
+                <span className="text-[9px] text-[var(--muted)] leading-tight text-center">{p.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* Haptic & Sound Settings */}
