@@ -60,6 +60,10 @@ export const PAYWALL_TRIAL_BANNER = (daysLeftLabel: string) =>
 export const NOTEBOOK_TRIAL_BANNER = (daysLeftLabel: string) =>
   `این امکان تا ${daysLeftLabel} روز دیگه رایگانه. تا وقت داری، ازش لذت ببر! 🌿`;
 
+// Hard-reset confirmation (Settings) — explicit wording requested after the message audit.
+export const HARD_RESET_CONFIRM_MESSAGE =
+  'آیا کاملاً مطمئنی؟ با این کار، تمام ذکرها، تاریخچه، ستاره‌ها و مدال‌های شما برای همیشه پاک می‌شن و این عمل غیرقابل بازگشته. پیشنهاد می‌کنیم قبل از این کار، از بخش «پشتیبان‌گیری» یک فایل پشتیبان تهیه کنید.';
+
 // بخش ذ #51 — re-lock message for a previously-created multi-stage custom dhikr
 export const MULTISTAGE_DHIKR_LOCKED_MESSAGE =
   'این ذکر چندمرحله‌ای دلخواه که در دوره‌ی رایگان ساخته بودی، الان قفل شده. با تهیه‌ی اشتراک ماهانه می‌تونی دوباره ازش استفاده کنی.';

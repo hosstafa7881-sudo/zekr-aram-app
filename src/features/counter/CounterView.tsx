@@ -122,7 +122,7 @@ export const CounterView: React.FC<CounterViewProps> = ({
         } else if (nextCount === 100) {
           triggerVibration([90, 60, 120, 60, 140], settings.vibrationEnabled, 'strong');
           playTargetReachedChime(settings.soundEnabled);
-          setMilestoneBanner('تسبیحات حضرت زهرا (س) با موفقیت کامل شد. قبول باشد!');
+          setMilestoneBanner('تسبیحات حضرت زهرا (س) با موفقیت کامل شد. قبول باشد! 🙏');
           setTimeout(() => setMilestoneBanner(null), 4000);
         } else {
           triggerVibration(12, settings.vibrationEnabled, settings.vibrationIntensity);
