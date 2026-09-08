@@ -3,6 +3,8 @@ import { UserSettings } from '../../lib/db';
 import { PALETTE_OPTIONS } from '../../lib/theme';
 import { LockedFeatureId, getFeatureLockState, getTrialDaysRemaining } from '../../lib/subscription';
 import { toPersianDigits } from '../../utils/persian';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
+import { HARD_RESET_CONFIRM_MESSAGE } from '../../lib/messages';
 import {
   Vibrate,
   Volume2,
@@ -319,38 +321,25 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </div>
         </div>
 
-        {!confirmHardReset ? (
-          <button
-            type="button"
-            onClick={() => setConfirmHardReset(true)}
-            className="mt-3 px-4 py-2 rounded-xl bg-[var(--danger)]/15 hover:bg-[var(--danger)]/25 border border-[var(--danger)]/40 text-[var(--danger)] text-xs font-bold transition-all"
-          >
-            پاک کردن کامل داده‌ها...
-          </button>
-        ) : (
-          <div className="mt-3 flex items-center gap-2 bg-[var(--bg)] p-3 rounded-xl border border-[var(--danger)]">
-            <span className="text-xs font-bold text-[var(--danger)] flex-1">
-              آیا کاملاً مطمئن هستید؟ این عمل غیرقابل بازگشت است.
-            </span>
-            <button
-              type="button"
-              onClick={() => setConfirmHardReset(false)}
-              className="px-3 py-1.5 rounded-lg bg-[var(--surface)] text-xs text-[var(--muted)]"
-            >
-              انصراف
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                onHardResetAllData();
-                setConfirmHardReset(false);
-              }}
-              className="px-3 py-1.5 rounded-lg bg-[var(--danger)] text-xs font-bold text-white"
-            >
-              بله، پاک شود
-            </button>
-          </div>
-        )}
+        <button
+          type="button"
+          onClick={() => setConfirmHardReset(true)}
+          className="mt-3 px-4 py-2 rounded-xl bg-[var(--danger)]/15 hover:bg-[var(--danger)]/25 border border-[var(--danger)]/40 text-[var(--danger)] text-xs font-bold transition-all"
+        >
+          پاک کردن کامل داده‌ها...
+        </button>
+
+        <ConfirmDialog
+          isOpen={confirmHardReset}
+          title="بازنشانی کامل و پاک کردن تمام داده‌ها"
+          message={HARD_RESET_CONFIRM_MESSAGE}
+          confirmLabel="بله، پاک شود"
+          onCancel={() => setConfirmHardReset(false)}
+          onConfirm={() => {
+            onHardResetAllData();
+            setConfirmHardReset(false);
+          }}
+        />
       </div>
     </div>
   );
