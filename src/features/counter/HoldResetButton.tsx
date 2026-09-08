@@ -60,12 +60,8 @@ export const HoldResetButton: React.FC<HoldResetButtonProps> = ({
     };
   }, []);
 
-  const radius = 17;
-  const circumference = 2 * Math.PI * radius;
-  const strokeDashoffset = circumference - (progress / 100) * circumference;
-
   return (
-    <div className="relative flex items-center gap-2">
+    <div className="relative flex items-center gap-2 flex-1">
       <button
         type="button"
         onPointerDown={startHold}
@@ -75,7 +71,7 @@ export const HoldResetButton: React.FC<HoldResetButtonProps> = ({
         disabled={disabled}
         title="برای صفر کردن، دکمه را نگه دارید"
         aria-label="صفر کردن شمارنده با نگه‌داشتن"
-        className={`relative flex items-center justify-center w-11 h-11 rounded-2xl border transition-all select-none no-touch-callout ${
+        className={`relative overflow-hidden flex-1 flex items-center justify-center gap-1.5 h-11 px-3.5 rounded-2xl border transition-all select-none no-touch-callout ${
           disabled
             ? 'opacity-30 border-[var(--border)] text-[var(--muted)] cursor-not-allowed'
             : holding
@@ -83,34 +79,18 @@ export const HoldResetButton: React.FC<HoldResetButtonProps> = ({
             : 'bg-[var(--surface)]/90 border-[var(--border)] text-[var(--muted)] hover:text-[var(--text)] hover:border-[var(--accent)]/40'
         }`}
       >
-        <svg className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none" viewBox="0 0 44 44">
-          <circle
-            cx="22"
-            cy="22"
-            r={radius}
-            fill="none"
-            stroke="color-mix(in oklab, var(--danger) 20%, transparent)"
-            strokeWidth="2.5"
-            className={holding ? 'opacity-100' : 'opacity-0'}
+        {holding && (
+          <span
+            className="absolute inset-x-0 bottom-0 h-1 bg-[var(--danger)] transition-[width] duration-75 ease-linear"
+            style={{ width: `${progress}%` }}
           />
-          <circle
-            cx="22"
-            cy="22"
-            r={radius}
-            fill="none"
-            stroke="var(--danger)"
-            strokeWidth="2.5"
-            strokeDasharray={circumference}
-            strokeDashoffset={strokeDashoffset}
-            strokeLinecap="round"
-            className="transition-none"
-          />
-        </svg>
-        <RotateCcw className="w-4 h-4" />
+        )}
+        <RotateCcw className="w-4 h-4 shrink-0" />
+        <span className="text-xs font-bold whitespace-nowrap">بازنشانی</span>
       </button>
 
       {holding && (
-        <span className="text-xs font-medium text-[var(--danger)] bg-[var(--bg)]/90 px-2.5 py-1 rounded-lg border border-[var(--danger)]/40 animate-pulse whitespace-nowrap">
+        <span className="absolute -top-8 right-0 text-xs font-medium text-[var(--danger)] bg-[var(--bg)]/95 px-2.5 py-1 rounded-lg border border-[var(--danger)]/40 animate-pulse whitespace-nowrap">
           نگه دارید ({Math.ceil(((100 - progress) / 100) * 1.4)} ثانیه)...
         </span>
       )}

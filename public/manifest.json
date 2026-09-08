@@ -1,15 +1,15 @@
 {
-  "name": "ذکرآرام | صلوات‌شمار و ذکرشمار بدون تبلیغ",
+  "name": "ذکرآرام | صلوات‌شمار و ذکرشمار",
   "short_name": "ذکرآرام",
-  "description": "ذکر بدون حواس‌پرتی. شمارش دقیق. ذخیرهٔ همیشگی و کاملاً آفلاین.",
+  "description": "شمارش دقیق ذکر. ذخیرهٔ همیشگی و کاملاً آفلاین.",
   "dir": "rtl",
   "lang": "fa-IR",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
-  "background_color": "#091410",
-  "theme_color": "#091410",
+  "background_color": "#F3F7EE",
+  "theme_color": "#F3F7EE",
   "categories": ["lifestyle", "utilities"],
   "icons": [
     {

@@ -15,6 +15,7 @@ import {
 } from './gamification';
 import { toPersianDigits } from '../utils/persian';
 import { useToast } from '../components/ToastProvider';
+import { STAR_EARNED_MESSAGE, STREAK_MESSAGE } from './messages';
 
 export interface PendingCelebration {
   emoji: string;
@@ -46,7 +47,7 @@ export function useGamificationEvents(dailyLogs: DailyLog[], todayDateKey: strin
     const newCelebrations: PendingCelebration[] = [];
 
     if (starCount > state.lastSeenStarCount) {
-      showToast(`یک ستاره‌ی جدید گرفتی! ⭐ مجموع ستاره‌هات: ${toPersianDigits(starCount)}`, {
+      showToast(STAR_EARNED_MESSAGE(toPersianDigits(starCount)), {
         kind: 'celebration',
         durationMs: 4000,
       });
@@ -65,7 +66,7 @@ export function useGamificationEvents(dailyLogs: DailyLog[], todayDateKey: strin
     }
 
     if (streak >= 2 && state.lastStreakCelebratedDateKey !== todayDateKey) {
-      showToast(`${toPersianDigits(streak)} روز پیاپی ذکر گفتی! همینطور ادامه بده 🌿`, {
+      showToast(STREAK_MESSAGE(toPersianDigits(streak)), {
         kind: 'celebration',
         durationMs: 4000,
       });

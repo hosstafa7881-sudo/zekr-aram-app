@@ -17,6 +17,7 @@ import {
 import { DhikrItem, INITIAL_DHIKR_LIST, TargetMode } from './lib/seedData';
 import { setScreenWakeLock } from './lib/haptics';
 import { applyTheme } from './lib/theme';
+import { getFeatureLockState } from './lib/subscription';
 import { getShamsiDateInfo } from './utils/persian';
 import { ToastProvider } from './components/ToastProvider';
 import { FeatureGateProvider, useFeatureGate } from './lib/FeatureGateContext';
@@ -56,17 +57,6 @@ export function App() {
   const [notebookItems, setNotebookItems] = useState<NotebookItemDef[]>(() => loadNotebookItems());
   const [notebookEntries, setNotebookEntries] = useState<NotebookDayEntry[]>(() => loadNotebookEntries());
   const [activeTab, setActiveTab] = useState<AppTab>('home');
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
-
-  // Listen for PWA install prompt on Android Chrome
-  useEffect(() => {
-    const handler = (e: Event) => {
-      e.preventDefault();
-      setDeferredPrompt(e);
-    };
-    window.addEventListener('beforeinstallprompt', handler);
-    return () => window.removeEventListener('beforeinstallprompt', handler);
-  }, []);
 
   // Keep Screen Wake Lock active when enabled
   useEffect(() => {
@@ -107,6 +97,17 @@ export function App() {
   useEffect(() => {
     applyTheme(settings.themeMode, settings.colorPalette);
   }, [settings.themeMode, settings.colorPalette]);
+
+  // Once the free trial ends, a non-pro user's theme/palette customization
+  // (both locked features) automatically reverts to the default (green
+  // palette, day mode) rather than staying on a choice they can no longer change.
+  useEffect(() => {
+    if (settings.isProUser) return;
+    if (getFeatureLockState(settings.isProUser) !== 'locked') return;
+    if (settings.themeMode !== 'day' || settings.colorPalette !== 'green') {
+      setSettings((prev) => ({ ...prev, themeMode: 'day', colorPalette: 'green' }));
+    }
+  }, [settings.isProUser, settings.themeMode, settings.colorPalette]);
 
   const activeDhikr =
     dhikrs.find((d) => d.id === activeDhikrId) || dhikrs[0] || INITIAL_DHIKR_LIST[0];
@@ -270,14 +271,6 @@ export function App() {
     setActiveTab('home');
   }, []);
 
-  // Trigger native PWA install prompt
-  const handleInstallPWA = async () => {
-    if (!deferredPrompt) return;
-    deferredPrompt.prompt();
-    await deferredPrompt.userChoice;
-    setDeferredPrompt(null);
-  };
-
   // Notebook handlers
   const updateTodayNotebookEntry = useCallback(
     (updater: (entry: NotebookDayEntry) => NotebookDayEntry) => {
@@ -383,8 +376,6 @@ export function App() {
           onDeleteDailyLog={handleDeleteDailyLog}
           onUpdateSettings={setSettings}
           onHardResetAllData={handleHardResetAllData}
-          onInstallPWA={handleInstallPWA}
-          canInstallPWA={Boolean(deferredPrompt)}
           onAddNotebookItem={handleAddNotebookItem}
           onDeleteNotebookItem={handleDeleteNotebookItem}
           onToggleNotebookItem={handleToggleNotebookItem}
@@ -421,8 +412,6 @@ interface MainShellProps {
   onDeleteDailyLog: (dateKey: string) => void;
   onUpdateSettings: (settings: UserSettings) => void;
   onHardResetAllData: () => void;
-  onInstallPWA: () => void;
-  canInstallPWA: boolean;
   onAddNotebookItem: (text: string) => void;
   onDeleteNotebookItem: (id: string) => void;
   onToggleNotebookItem: (id: string) => void;
@@ -472,8 +461,6 @@ function MainShell(props: MainShellProps) {
             onUpdateSettings={props.onUpdateSettings}
             onGoToCounter={() => props.setActiveTab('counter')}
             onGoToLibrary={() => props.setActiveTab('library')}
-            onGoToHistory={() => props.setActiveTab('history')}
-            onGoToNotebook={() => guard('notebook', () => props.setActiveTab('notebook'))}
             onGoToPaywall={() => props.setActiveTab('subscription')}
           />
         )}
@@ -481,9 +468,8 @@ function MainShell(props: MainShellProps) {
         {props.activeTab === 'counter' && (
           <CounterView
             activeDhikr={props.activeDhikr}
-            allDhikrs={props.dhikrs}
+            dailyLogs={props.dailyLogs}
             settings={props.settings}
-            onSelectDhikr={props.onSelectDhikr}
             onIncrement={props.onIncrement}
             onReset={props.onReset}
             onUpdateTarget={props.onUpdateTarget}
@@ -508,6 +494,7 @@ function MainShell(props: MainShellProps) {
           <NotebookView
             items={props.notebookItems}
             todayEntry={props.todayNotebookEntry}
+            isProUser={props.settings.isProUser}
             onAddItem={props.onAddNotebookItem}
             onDeleteItem={props.onDeleteNotebookItem}
             onToggleItem={props.onToggleNotebookItem}
@@ -536,8 +523,6 @@ function MainShell(props: MainShellProps) {
             settings={props.settings}
             onUpdateSettings={props.onUpdateSettings}
             onHardResetAllData={props.onHardResetAllData}
-            onInstallPWA={props.onInstallPWA}
-            canInstallPWA={props.canInstallPWA}
             guard={guard}
             onGoToPaywall={() => props.setActiveTab('subscription')}
           />

@@ -54,7 +54,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             key={t.id}
             className={`pointer-events-auto w-full max-w-sm flex items-center gap-2 px-4 py-3 rounded-2xl text-xs font-bold shadow-2xl border animate-fade-in ${
               t.kind === 'celebration'
-                ? 'bg-[var(--accent)] text-[var(--bg)] border-[var(--accent-dark)]'
+                ? 'bg-[var(--accent)] text-white border-[var(--accent-dark)]'
                 : t.kind === 'success'
                 ? 'bg-[var(--success)]/20 text-[var(--text)] border-[var(--success)]'
                 : 'bg-[var(--surface)] text-[var(--text)] border-[var(--border)]'

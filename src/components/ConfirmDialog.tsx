@@ -57,7 +57,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
             className={`flex-1 py-2.5 rounded-xl text-xs font-bold shadow-md ${
               danger
                 ? 'bg-[var(--danger)] text-white hover:opacity-90'
-                : 'bg-[var(--accent)] text-[var(--bg)] hover:bg-[var(--accent-light)]'
+                : 'bg-[var(--accent)] text-white hover:bg-[var(--accent-light)]'
             }`}
           >
             {confirmLabel}

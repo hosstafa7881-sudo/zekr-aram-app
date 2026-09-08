@@ -40,7 +40,7 @@ export const CelebrationModal: React.FC<CelebrationModalProps> = ({
           onClick={() =>
             shareText(text, () => showToast('متن اشتراک‌گذاری در حافظهٔ موقت کپی شد.', { kind: 'success' }))
           }
-          className="w-full flex items-center justify-center gap-2 bg-[var(--accent)] hover:bg-[var(--accent-light)] text-[var(--bg)] font-bold py-2.5 rounded-2xl shadow-md transition-all"
+          className="w-full flex items-center justify-center gap-2 bg-[var(--accent)] hover:bg-[var(--accent-light)] text-white font-bold py-2.5 rounded-2xl shadow-md transition-all"
         >
           <Share2 className="w-4 h-4" />
           اشتراک‌گذاری

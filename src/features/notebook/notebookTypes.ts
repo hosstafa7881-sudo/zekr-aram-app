@@ -30,4 +30,6 @@ export const DEFAULT_NOTEBOOK_ITEMS: NotebookItemDef[] = [
   { id: 'default-10', text: 'به یاد خدا بودن', isCustom: false },
 ];
 
-export const FEELING_STICKERS = ['😊', '🙏', '❤️', '🌿', '😌', '😔', '💪', '✨', '😢', '🤲'];
+export const FEELING_STICKERS = [
+  '😊', '🙏', '❤️', '🌿', '😌', '😔', '💪', '✨', '😢', '🤲', '😍', '🤩', '😘',
+];

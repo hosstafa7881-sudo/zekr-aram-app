@@ -1,5 +1,11 @@
 export type TargetMode = 'stop' | 'notify-continue' | 'loop';
 
+export interface CustomDhikrStage {
+  id: string;
+  name: string;
+  target: number;
+}
+
 export interface DhikrItem {
   id: string;
   title: string;
@@ -12,6 +18,8 @@ export interface DhikrItem {
   category: 'salawat' | 'tasbihat' | 'weekday' | 'general' | 'custom';
   weekdayIndex?: number; // 0 = شنبه (Saturday), 1 = یکشنبه, ..., 6 = جمعه (Friday)
   isTasbihatZahra?: boolean;
+  /** User-defined multi-stage dhikr (like Tasbihat Arba's structure), each stage with its own name + target. Locked after the free trial. */
+  customStages?: CustomDhikrStage[];
   color: string;
   updatedAt: number;
 }

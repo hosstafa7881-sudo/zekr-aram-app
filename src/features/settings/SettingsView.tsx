@@ -9,8 +9,6 @@ import {
   Sun,
   Type,
   ShieldAlert,
-  Info,
-  DownloadCloud,
   Moon,
   Palette,
   Crown,
@@ -21,9 +19,7 @@ interface SettingsViewProps {
   settings: UserSettings;
   onUpdateSettings: (newSettings: UserSettings) => void;
   onHardResetAllData: () => void;
-  onInstallPWA?: () => void;
-  canInstallPWA: boolean;
-  guard: (featureId: LockedFeatureId, onAllowed: () => void) => void;
+  guard: (featureId: LockedFeatureId, onAllowed: () => void, customLockedMessage?: string) => void;
   onGoToPaywall: () => void;
 }
 
@@ -31,8 +27,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   settings,
   onUpdateSettings,
   onHardResetAllData,
-  onInstallPWA,
-  canInstallPWA,
   guard,
   onGoToPaywall,
 }) => {
@@ -49,48 +43,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
   return (
     <div className="flex flex-col flex-1 w-full max-w-2xl mx-auto px-3 pt-2 pb-6 space-y-4">
-      {/* Android PWA Installation Onboarding Card */}
-      <div className="bg-gradient-to-br from-[var(--surface-2)] to-[var(--surface)] border border-[var(--accent)]/40 rounded-2xl p-4 shadow-lg">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-2xl bg-[var(--accent)]/20 border border-[var(--accent)] flex items-center justify-center text-[var(--accent)] shrink-0">
-              <DownloadCloud className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-[var(--text)]">
-                نصب اپلیکیشن «ذکرآرام» روی صفحهٔ اصلی گوشی (PWA)
-              </h3>
-              <p className="text-xs text-[var(--muted)] mt-0.5 leading-relaxed">
-                این برنامه یک وب‌اپلیکیشن پیشرفته (PWA) است که بدون نیاز به اینترنت کار می‌کند و مانند برنامهٔ واقعی روی اندروید نصب می‌شود.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {canInstallPWA && onInstallPWA ? (
-          <button
-            type="button"
-            onClick={onInstallPWA}
-            className="mt-3 w-full py-2.5 rounded-xl bg-[var(--accent)] hover:bg-[var(--accent-light)] text-[var(--bg)] text-xs font-bold shadow-md transition-all"
-          >
-            نصب مستقیم روی گوشی اندروید
-          </button>
-        ) : (
-          <div className="mt-3 bg-[var(--bg)]/80 border border-[var(--border)] rounded-xl p-3 text-xs text-[var(--muted)] space-y-1.5">
-            <div className="font-bold text-[var(--accent)]">راهنمای نصب در کروم اندروید:</div>
-            <p>
-              ۱. روی دکمهٔ سه نقطه <strong className="text-[var(--text)]">(⋮)</strong> در بالا سمت چپ یا راست مرورگر کروم بزنید.
-            </p>
-            <p>
-              ۲. گزینهٔ <strong className="text-[var(--text)]">«Add to Home screen»</strong> یا <strong className="text-[var(--text)]">«Install app / نصب برنامه»</strong> را انتخاب کنید.
-            </p>
-            <p>
-              ۳. آیکون «ذکرآرام» به صفحهٔ اصلی گوشی اضافه می‌شود و همیشه کاملاً آفلاین و بدون نوار آدرس باز خواهد شد.
-            </p>
-          </div>
-        )}
-      </div>
-
       {/* Subscription status card */}
       <div className="bg-[var(--surface)] border border-[var(--accent)]/30 rounded-2xl p-4 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
@@ -117,7 +69,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         <button
           type="button"
           onClick={onGoToPaywall}
-          className="shrink-0 px-3.5 py-2 rounded-xl bg-[var(--accent)] hover:bg-[var(--accent-light)] text-[var(--bg)] text-xs font-bold"
+          className="shrink-0 px-3.5 py-2 rounded-xl bg-[var(--accent)] hover:bg-[var(--accent-light)] text-white text-xs font-bold"
         >
           مشاهده
         </button>
@@ -125,9 +77,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
       {/* Appearance: Day/Night mode + color palette */}
       <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-4 space-y-4">
-        <h3 className="text-sm font-bold text-[var(--text)] border-b border-[var(--border)] pb-2">
-          ظاهر و شخصی‌سازی
-        </h3>
+        <div className="flex items-center justify-between border-b border-[var(--border)] pb-2">
+          <h3 className="text-sm font-bold text-[var(--text)]">ظاهر و شخصی‌سازی</h3>
+          {!settings.isProUser && lockState !== 'locked' && (
+            <span className="text-[10px] font-bold text-[var(--accent)] bg-[var(--accent)]/10 px-2 py-0.5 rounded-md">
+              {toPersianDigits(daysRemaining)} روز مانده
+            </span>
+          )}
+        </div>
 
         <div>
           <div className="flex items-center gap-2 mb-2">
@@ -136,7 +93,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             ) : (
               <Moon className="w-4 h-4 text-[var(--accent)]" />
             )}
-            <span className="text-xs font-bold text-[var(--text)]">حالت نمایش صفحه</span>
+            <span className="text-xs font-bold text-[var(--text)]">حالت شب و روز</span>
           </div>
           <div className="grid grid-cols-2 gap-2">
             <button
@@ -144,7 +101,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               onClick={() => guard('day-night-mode', () => onUpdateSettings({ ...settings, themeMode: 'night' }))}
               className={`flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold border transition-all ${
                 settings.themeMode === 'night'
-                  ? 'bg-[var(--accent)] text-[var(--bg)] border-[var(--accent)]'
+                  ? 'bg-[var(--accent)] text-white border-[var(--accent)]'
                   : 'bg-[var(--bg)] text-[var(--muted)] border-[var(--border)]'
               }`}
             >
@@ -156,7 +113,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               onClick={() => guard('day-night-mode', () => onUpdateSettings({ ...settings, themeMode: 'day' }))}
               className={`flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold border transition-all ${
                 settings.themeMode === 'day'
-                  ? 'bg-[var(--accent)] text-[var(--bg)] border-[var(--accent)]'
+                  ? 'bg-[var(--accent)] text-white border-[var(--accent)]'
                   : 'bg-[var(--bg)] text-[var(--muted)] border-[var(--border)]'
               }`}
             >
@@ -249,7 +206,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   }
                   className={`px-3 py-1 rounded-lg text-xs font-bold border transition-all ${
                     settings.vibrationIntensity === opt.id
-                      ? 'bg-[var(--accent)] text-[var(--bg)] border-[var(--accent)]'
+                      ? 'bg-[var(--accent)] text-white border-[var(--accent)]'
                       : 'bg-[var(--bg)] text-[var(--muted)] border-[var(--border)]'
                   }`}
                 >
@@ -343,23 +300,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               }`}
             />
           </button>
-        </div>
-      </div>
-
-      {/* Honest Explanation about Hardware Volume Buttons in Web/PWA */}
-      <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-4">
-        <div className="flex items-start gap-2.5">
-          <Info className="w-5 h-5 text-[var(--accent)] shrink-0 mt-0.5" />
-          <div>
-            <h4 className="text-xs font-bold text-[var(--text)] mb-1">
-              دربارهٔ شمارش با دکمهٔ ولوم (صدا) گوشی در وب‌اپلیکیشن
-            </h4>
-            <p className="text-xs text-[var(--muted)] leading-relaxed">
-              مرورگرهای اندروید به دلایل امنیتی اجازهٔ تغییر کاربری دکمهٔ فیزیکی صدا (Volume Up/Down) را به وب‌اپلیکیشن‌ها نمی‌دهند تا تنظیم صدای گوشی مختل نشود.
-              <br />
-              <strong className="text-[var(--accent)]">راهکار جایگزین در ذکرآرام:</strong> ۶۰٪ پایین صفحه به صورت یک ناحیهٔ لمسی بزرگ طراحی شده است تا بتوانید حتی بدون نگاه کردن به گوشی، با لمس هر نقطه از نیمهٔ پایینی صفحه با شست خود به راحتی ذکر بگویید. همچنین روی رایانه و کیبورد دکمه‌های <code className="text-[var(--text)]">Space</code> و <code className="text-[var(--text)]">Arrow Up/Down</code> فعال هستند.
-            </p>
-          </div>
         </div>
       </div>
 

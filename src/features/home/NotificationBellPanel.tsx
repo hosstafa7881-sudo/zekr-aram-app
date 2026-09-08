@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { X, Bell, CalendarHeart, Clock, Sparkles, Skull, PartyPopper } from 'lucide-react';
 import { UserSettings } from '../../lib/db';
-import { toPersianDigits } from '../../utils/persian';
+import { toPersianDigits, getShamsiDateInfo } from '../../utils/persian';
 import { getHijriDateInfo, formatHijriDate } from '../../utils/hijri';
 import { getUpcomingOccasions } from '../../lib/occasions';
+import { OccasionsCalendarGrid } from './OccasionsCalendarGrid';
 import {
   isNotificationSupported,
   getNotificationPermission,
@@ -31,7 +32,26 @@ export const NotificationBellPanel: React.FC<NotificationBellPanelProps> = ({
   if (!isOpen) return null;
 
   const todayHijri = getHijriDateInfo();
+  const todayShamsi = getShamsiDateInfo();
   const upcoming = getUpcomingOccasions(todayHijri);
+
+  const [reminderHour, reminderMinute] = settings.reminderTime.split(':');
+
+  const updateReminderHour = (value: string) => {
+    const h = Math.min(23, Math.max(0, parseInt(value, 10) || 0));
+    onUpdateSettings({
+      ...settings,
+      reminderTime: `${String(h).padStart(2, '0')}:${reminderMinute || '00'}`,
+    });
+  };
+
+  const updateReminderMinute = (value: string) => {
+    const m = Math.min(59, Math.max(0, parseInt(value, 10) || 0));
+    onUpdateSettings({
+      ...settings,
+      reminderTime: `${reminderHour || '00'}:${String(m).padStart(2, '0')}`,
+    });
+  };
 
   const handleToggleReminder = async () => {
     if (!settings.reminderEnabled) {
@@ -70,7 +90,7 @@ export const NotificationBellPanel: React.FC<NotificationBellPanelProps> = ({
             onClick={() => setTab('reminder')}
             className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold border transition-all ${
               tab === 'reminder'
-                ? 'bg-[var(--accent)] text-[var(--bg)] border-[var(--accent)]'
+                ? 'bg-[var(--accent)] text-white border-[var(--accent)]'
                 : 'bg-[var(--bg)] text-[var(--muted)] border-[var(--border)]'
             }`}
           >
@@ -82,7 +102,7 @@ export const NotificationBellPanel: React.FC<NotificationBellPanelProps> = ({
             onClick={() => setTab('occasions')}
             className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold border transition-all ${
               tab === 'occasions'
-                ? 'bg-[var(--accent)] text-[var(--bg)] border-[var(--accent)]'
+                ? 'bg-[var(--accent)] text-white border-[var(--accent)]'
                 : 'bg-[var(--bg)] text-[var(--muted)] border-[var(--border)]'
             }`}
           >
@@ -118,12 +138,28 @@ export const NotificationBellPanel: React.FC<NotificationBellPanelProps> = ({
             {settings.reminderEnabled && (
               <div className="bg-[var(--bg)] border border-[var(--border)] rounded-2xl p-3.5">
                 <label className="block text-xs font-bold text-[var(--text)] mb-2">ساعت یادآوری:</label>
-                <input
-                  type="time"
-                  value={settings.reminderTime}
-                  onChange={(e) => onUpdateSettings({ ...settings, reminderTime: e.target.value })}
-                  className="w-full bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] rounded-xl px-3.5 py-2.5 text-center text-lg font-bold text-[var(--text)] outline-none tabular-nums-fa"
-                />
+                <div className="flex items-center justify-center gap-2">
+                  <input
+                    type="number"
+                    min={0}
+                    max={23}
+                    value={reminderHour}
+                    onChange={(e) => updateReminderHour(e.target.value)}
+                    className="w-20 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] rounded-xl px-2 py-2.5 text-center text-lg font-bold text-[var(--text)] outline-none tabular-nums-fa"
+                    aria-label="ساعت"
+                  />
+                  <span className="text-lg font-bold text-[var(--muted)]">:</span>
+                  <input
+                    type="number"
+                    min={0}
+                    max={59}
+                    value={reminderMinute}
+                    onChange={(e) => updateReminderMinute(e.target.value)}
+                    className="w-20 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] rounded-xl px-2 py-2.5 text-center text-lg font-bold text-[var(--text)] outline-none tabular-nums-fa"
+                    aria-label="دقیقه"
+                  />
+                </div>
+                <p className="text-[10px] text-[var(--muted)] text-center mt-1.5">ساعت (۰ تا ۲۳) و دقیقه (۰ تا ۵۹) را وارد کنید</p>
               </div>
             )}
 
@@ -142,11 +178,13 @@ export const NotificationBellPanel: React.FC<NotificationBellPanelProps> = ({
         {tab === 'occasions' && (
           <div className="space-y-3">
             <div className="bg-[var(--accent)]/10 border border-[var(--accent)]/30 rounded-2xl p-3 text-center">
-              <div className="text-[11px] text-[var(--muted)] mb-0.5">امروز به تقویم قمری</div>
-              <div className="text-sm font-bold text-[var(--text)]">{formatHijriDate(todayHijri)}</div>
+              <div className="text-[11px] text-[var(--muted)] mb-0.5">امروز</div>
+              <div className="text-sm font-bold text-[var(--text)]">
+                {todayShamsi.formattedFull} — {formatHijriDate(todayHijri)}
+              </div>
             </div>
 
-            <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+            <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
               {upcoming.map((occ) => (
                 <div
                   key={occ.id}
@@ -168,13 +206,15 @@ export const NotificationBellPanel: React.FC<NotificationBellPanelProps> = ({
                   <div className="flex-1 min-w-0">
                     <div className="text-xs font-bold text-[var(--text)] leading-relaxed">{occ.title}</div>
                     <div className="text-[10px] text-[var(--muted)] mt-0.5">
-                      {occ.daysUntil === 0
-                        ? 'امروز'
-                        : `${toPersianDigits(occ.daysUntil)} روز دیگر`}
+                      {occ.daysUntil === 0 ? 'امروز' : `${toPersianDigits(occ.daysUntil)} روز دیگر`} · {occ.shamsiLabel}
                     </div>
                   </div>
                 </div>
               ))}
+            </div>
+
+            <div className="pt-2 border-t border-[var(--border)]">
+              <OccasionsCalendarGrid />
             </div>
           </div>
         )}
