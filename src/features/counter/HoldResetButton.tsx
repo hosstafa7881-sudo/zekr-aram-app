@@ -1,0 +1,119 @@
+import React, { useState, useRef, useEffect } from 'react';
+import { RotateCcw } from 'lucide-react';
+import { triggerVibration } from '../../lib/haptics';
+
+interface HoldResetButtonProps {
+  onResetConfirmed: () => void;
+  disabled?: boolean;
+  vibrationEnabled: boolean;
+}
+
+export const HoldResetButton: React.FC<HoldResetButtonProps> = ({
+  onResetConfirmed,
+  disabled = false,
+  vibrationEnabled,
+}) => {
+  const [holding, setHolding] = useState(false);
+  const [progress, setProgress] = useState(0); // 0 to 100
+  const frameRef = useRef<number | null>(null);
+  const startTimeRef = useRef<number>(0);
+  const HOLD_DURATION = 1350; // 1.35s hold required
+
+  const startHold = (e: React.PointerEvent) => {
+    e.stopPropagation();
+    if (disabled) return;
+    setHolding(true);
+    startTimeRef.current = performance.now();
+    triggerVibration(15, vibrationEnabled, 'light');
+
+    const updateProgress = (now: number) => {
+      const elapsed = now - startTimeRef.current;
+      const pct = Math.min(100, (elapsed / HOLD_DURATION) * 100);
+      setProgress(pct);
+
+      if (pct >= 100) {
+        setHolding(false);
+        setProgress(0);
+        triggerVibration([40, 40, 70], vibrationEnabled, 'strong');
+        onResetConfirmed();
+      } else {
+        frameRef.current = requestAnimationFrame(updateProgress);
+      }
+    };
+
+    frameRef.current = requestAnimationFrame(updateProgress);
+  };
+
+  const cancelHold = (e?: React.PointerEvent) => {
+    if (e) e.stopPropagation();
+    if (frameRef.current) {
+      cancelAnimationFrame(frameRef.current);
+      frameRef.current = null;
+    }
+    setHolding(false);
+    setProgress(0);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (frameRef.current) cancelAnimationFrame(frameRef.current);
+    };
+  }, []);
+
+  const radius = 17;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference - (progress / 100) * circumference;
+
+  return (
+    <div className="relative flex items-center gap-2">
+      <button
+        type="button"
+        onPointerDown={startHold}
+        onPointerUp={cancelHold}
+        onPointerLeave={cancelHold}
+        onPointerCancel={cancelHold}
+        disabled={disabled}
+        title="برای صفر کردن، دکمه را نگه دارید"
+        aria-label="صفر کردن شمارنده با نگه‌داشتن"
+        className={`relative flex items-center justify-center w-11 h-11 rounded-2xl border transition-all select-none no-touch-callout ${
+          disabled
+            ? 'opacity-30 border-[#1C352B] text-[#94B2A3] cursor-not-allowed'
+            : holding
+            ? 'bg-[#EF4444]/20 border-[#EF4444] text-[#EF4444] scale-95'
+            : 'bg-[#11221B]/90 border-[#1C352B] text-[#94B2A3] hover:text-[#F3F7F4] hover:border-[#D4AF37]/40'
+        }`}
+      >
+        <svg className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none" viewBox="0 0 44 44">
+          <circle
+            cx="22"
+            cy="22"
+            r={radius}
+            fill="none"
+            stroke="rgba(239, 68, 68, 0.2)"
+            strokeWidth="2.5"
+            className={holding ? 'opacity-100' : 'opacity-0'}
+          />
+          <circle
+            cx="22"
+            cy="22"
+            r={radius}
+            fill="none"
+            stroke="#EF4444"
+            strokeWidth="2.5"
+            strokeDasharray={circumference}
+            strokeDashoffset={strokeDashoffset}
+            strokeLinecap="round"
+            className="transition-none"
+          />
+        </svg>
+        <RotateCcw className="w-4 h-4" />
+      </button>
+
+      {holding && (
+        <span className="text-xs font-medium text-[#EF4444] bg-[#091410]/90 px-2.5 py-1 rounded-lg border border-[#EF4444]/40 animate-pulse whitespace-nowrap">
+          نگه دارید ({Math.ceil(((100 - progress) / 100) * 1.4)} ثانیه)...
+        </span>
+      )}
+    </div>
+  );
+};
