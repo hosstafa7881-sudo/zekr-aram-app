@@ -10,7 +10,7 @@ interface TourStep {
 
 const STEPS: TourStep[] = [
   {
-    selector: '[data-tour="home-today-card"]',
+    selector: '[data-tour="home-start-button"]',
     title: 'شروع سریع ذکر',
     description: 'از همین‌جا می‌توانید ذکر امروزتان را شروع یا ادامه دهید و مجموع ذکرهای امروز را ببینید.',
   },
@@ -55,6 +55,9 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({ isActive, onFini
 
   useEffect(() => {
     if (!isActive) return;
+    // Clear immediately so a step transition never shows the *previous*
+    // step's rectangle paired with the *new* step's tooltip for a frame.
+    setRect(null);
     let raf: number;
     const measure = () => {
       const el = document.querySelector(step.selector);
@@ -125,7 +128,7 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({ isActive, onFini
           <button
             type="button"
             onClick={handleNext}
-            className="flex items-center gap-1.5 bg-[var(--accent)] hover:bg-[var(--accent-light)] text-[var(--bg)] text-xs font-bold px-3.5 py-1.5 rounded-xl"
+            className="flex items-center gap-1.5 bg-[var(--accent)] hover:bg-[var(--accent-light)] text-white text-xs font-bold px-3.5 py-1.5 rounded-xl"
           >
             {isLastStep ? 'پایان' : 'بعدی'}
             {!isLastStep && <ArrowLeft className="w-3.5 h-3.5" />}

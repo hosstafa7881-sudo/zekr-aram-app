@@ -6,6 +6,7 @@ import {
   wasWarningShownToday,
   markWarningShownToday,
   TRIAL_WARNING_MESSAGE,
+  TRIAL_ENDED_MESSAGE,
 } from './subscription';
 import { toPersianDigits } from '../utils/persian';
 import { useToast } from '../components/ToastProvider';
@@ -13,7 +14,8 @@ import { FeatureLockModal } from '../components/FeatureLockModal';
 
 interface FeatureGateContextValue {
   isProUser: boolean;
-  guard: (featureId: LockedFeatureId, onAllowed: () => void) => void;
+  /** customLockedMessage overrides the generic "trial ended" text for this one call (e.g. re-locking a previously-created multi-stage dhikr). */
+  guard: (featureId: LockedFeatureId, onAllowed: () => void, customLockedMessage?: string) => void;
 }
 
 const FeatureGateContext = createContext<FeatureGateContextValue | null>(null);
@@ -39,9 +41,10 @@ export const FeatureGateProvider: React.FC<FeatureGateProviderProps> = ({
 }) => {
   const { showToast } = useToast();
   const [lockedFeature, setLockedFeature] = useState<LockedFeatureId | null>(null);
+  const [lockedMessage, setLockedMessage] = useState<string>(TRIAL_ENDED_MESSAGE);
 
   const guard = useCallback(
-    (_featureId: LockedFeatureId, onAllowed: () => void) => {
+    (_featureId: LockedFeatureId, onAllowed: () => void, customLockedMessage?: string) => {
       const state = getFeatureLockState(isProUser);
 
       if (state === 'unlocked') {
@@ -61,6 +64,7 @@ export const FeatureGateProvider: React.FC<FeatureGateProviderProps> = ({
         return;
       }
 
+      setLockedMessage(customLockedMessage || TRIAL_ENDED_MESSAGE);
       setLockedFeature(_featureId);
     },
     [isProUser, todayDateKey, showToast]
@@ -71,6 +75,7 @@ export const FeatureGateProvider: React.FC<FeatureGateProviderProps> = ({
       {children}
       <FeatureLockModal
         isOpen={lockedFeature !== null}
+        message={lockedMessage}
         onClose={() => setLockedFeature(null)}
         onSubscribe={() => {
           setLockedFeature(null);

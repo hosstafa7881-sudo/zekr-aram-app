@@ -2,14 +2,15 @@ import React from 'react';
 import { UserSettings } from '../../lib/db';
 import { TasbihIcon } from '../../components/TasbihIcon';
 import { useToast } from '../../components/ToastProvider';
+import { getFeatureLockState, getTrialDaysRemaining } from '../../lib/subscription';
+import { toPersianDigits } from '../../utils/persian';
+import { PAYWALL_TRIAL_BANNER } from '../../lib/messages';
 import {
   Sparkles,
   Ban,
   BarChart3,
-  TrendingUp,
   NotebookPen,
   Palette,
-  MoonStar,
   LayoutGrid,
   Check,
 } from 'lucide-react';
@@ -23,10 +24,9 @@ const FEATURES: { icon: React.ReactNode; text: string; color: string }[] = [
   { icon: <Ban className="w-5 h-5" />, text: 'حذف کامل تمامی تبلیغات', color: '#EF4444' },
   { icon: <TasbihIcon className="w-5 h-5" />, text: 'دسترسی به تسبیحات اربعه و تسبیحات حضرت زهرا (س)', color: '#10B981' },
   { icon: <BarChart3 className="w-5 h-5" />, text: 'دسترسی کامل و همیشگی به ریزآمار روزهای گذشته', color: '#3B82F6' },
-  { icon: <TrendingUp className="w-5 h-5" />, text: 'دسترسی کامل به نمودار ۷ روز اخیر', color: '#A855F7' },
   { icon: <NotebookPen className="w-5 h-5" />, text: 'دسترسی نامحدود به دفترچهٔ کارهای خوب روزانه', color: '#F59E0B' },
-  { icon: <Palette className="w-5 h-5" />, text: 'تنظیمات کامل رنگ پس‌زمینه و شخصی‌سازی', color: '#EC4899' },
-  { icon: <MoonStar className="w-5 h-5" />, text: 'دسترسی کامل به حالت شب و حالت روز', color: '#6366F1' },
+  { icon: <Palette className="w-5 h-5" />, text: 'تنظیمات کامل رنگ پس‌زمینه و حالت شب/روز', color: '#EC4899' },
+  { icon: <TasbihIcon className="w-5 h-5" />, text: 'امکان افزودن ذکر چندمرحله‌ای دلخواه', color: '#10B981' },
   { icon: <LayoutGrid className="w-5 h-5" />, text: 'دسترسی به ویجت صفحهٔ اصلی (نسخهٔ اندروید)', color: '#14B8A6' },
 ];
 
@@ -64,8 +64,16 @@ export const PaywallView: React.FC<PaywallViewProps> = ({ settings, onUpdateSett
     );
   }
 
+  const lockState = getFeatureLockState(settings.isProUser);
+
   return (
     <div className="flex flex-col flex-1 w-full max-w-md mx-auto px-4 pt-4 pb-8">
+      {lockState !== 'locked' && (
+        <div className="bg-[var(--accent)]/10 border border-[var(--accent)]/30 rounded-2xl px-4 py-2.5 text-xs font-bold text-[var(--text)] text-center mb-4">
+          {PAYWALL_TRIAL_BANNER(toPersianDigits(getTrialDaysRemaining()))}
+        </div>
+      )}
+
       <div className="text-center mb-5">
         <div className="flex items-center justify-center gap-2 text-[var(--accent)] mb-1.5">
           <Sparkles className="w-5 h-5" />
@@ -104,7 +112,7 @@ export const PaywallView: React.FC<PaywallViewProps> = ({ settings, onUpdateSett
       <button
         type="button"
         onClick={handleSubscribe}
-        className="w-full py-3.5 rounded-2xl bg-[var(--accent)] hover:bg-[var(--accent-light)] text-[var(--bg)] font-bold shadow-lg shadow-[var(--accent)]/20 transition-all"
+        className="w-full py-3.5 rounded-2xl bg-[var(--accent)] hover:bg-[var(--accent-light)] text-white font-bold shadow-lg shadow-[var(--accent)]/20 transition-all"
       >
         تهیه اشتراک ماهانه
       </button>

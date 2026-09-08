@@ -16,7 +16,8 @@ export type LockedFeatureId =
   | 'color-palette'
   | 'day-night-mode'
   | 'remove-ads'
-  | 'home-widget';
+  | 'home-widget'
+  | 'multistage-dhikr';
 
 export const ALWAYS_FREE_DHIKR_IDS = new Set<string>([]);
 export const LOCKED_DHIKR_IDS: Record<string, LockedFeatureId> = {

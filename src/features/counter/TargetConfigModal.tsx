@@ -64,7 +64,7 @@ export const TargetConfigModal: React.FC<TargetConfigModalProps> = ({
                   onClick={() => setTarget(preset)}
                   className={`py-2 rounded-xl text-xs font-bold tabular-nums-fa border transition-all ${
                     target === preset
-                      ? 'bg-[var(--accent)] text-[var(--bg)] border-[var(--accent)]'
+                      ? 'bg-[var(--accent)] text-white border-[var(--accent)]'
                       : 'bg-[var(--bg)] text-[var(--text)] border-[var(--border)] hover:border-[var(--accent)]/50'
                   }`}
                 >
@@ -169,7 +169,7 @@ export const TargetConfigModal: React.FC<TargetConfigModalProps> = ({
             </button>
             <button
               type="submit"
-              className="flex-1 py-2.5 rounded-xl bg-[var(--accent)] text-[var(--bg)] text-xs font-bold flex items-center justify-center gap-1.5 shadow-lg shadow-[var(--accent)]/20 hover:bg-[var(--accent-light)]"
+              className="flex-1 py-2.5 rounded-xl bg-[var(--accent)] text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-lg shadow-[var(--accent)]/20 hover:bg-[var(--accent-light)]"
             >
               <Check className="w-4 h-4" />
               ذخیره هدف

@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { DhikrItem, TargetMode } from '../../lib/seedData';
-import { UserSettings } from '../../lib/db';
+import { UserSettings, DailyLog } from '../../lib/db';
 import {
   toPersianDigits,
-  getShamsiDateInfo,
   stripArabicDiacritics,
 } from '../../utils/persian';
 import {
@@ -11,24 +10,30 @@ import {
   playTasbihBeadClick,
   playTargetReachedChime,
 } from '../../lib/haptics';
+import { computeLifetimeTotal, computeStarCount, computeEarnedBadges, BADGE_LEVELS } from '../../lib/gamification';
+import { shareText } from '../../components/ShareStoreLinks';
+import { useToast } from '../../components/ToastProvider';
+import { TARGET_REACHED_MESSAGE } from '../../lib/messages';
 import { HoldResetButton } from './HoldResetButton';
 import { TasbihatStageBar, getTasbihatStageDetail } from './TasbihatStageBar';
+import { CustomStageBar } from './CustomStageBar';
+import { getCustomStageDetail } from './customStageHelpers';
 import { TargetConfigModal } from './TargetConfigModal';
 import {
   Minus,
   Target,
-  ChevronDown,
-  Sparkles,
+  BookOpen,
   Volume2,
   VolumeX,
   Vibrate,
+  Star,
+  Share2,
 } from 'lucide-react';
 
 interface CounterViewProps {
   activeDhikr: DhikrItem;
-  allDhikrs: DhikrItem[];
+  dailyLogs: DailyLog[];
   settings: UserSettings;
-  onSelectDhikr: (id: string) => void;
   onIncrement: (delta: number) => void;
   onReset: () => void;
   onUpdateTarget: (newTarget: number, newMode: TargetMode) => void;
@@ -38,9 +43,8 @@ interface CounterViewProps {
 
 export const CounterView: React.FC<CounterViewProps> = ({
   activeDhikr,
-  allDhikrs,
+  dailyLogs,
   settings,
-  onSelectDhikr,
   onIncrement,
   onReset,
   onUpdateTarget,
@@ -50,11 +54,21 @@ export const CounterView: React.FC<CounterViewProps> = ({
   const [isTargetModalOpen, setIsTargetModalOpen] = useState(false);
   const [tapRipple, setTapRipple] = useState<{ x: number; y: number; id: number } | null>(null);
   const [milestoneBanner, setMilestoneBanner] = useState<string | null>(null);
+  const { showToast } = useToast();
 
-  const shamsiToday = getShamsiDateInfo();
-  const todayWeekdayDhikr = allDhikrs.find(
-    (d) => d.category === 'weekday' && d.weekdayIndex === shamsiToday.weekdayIndex
-  );
+  const lifetimeTotal = computeLifetimeTotal(dailyLogs);
+  const starCount = computeStarCount(lifetimeTotal);
+  const earnedBadges = computeEarnedBadges(lifetimeTotal);
+  const hasAnyAchievement = starCount > 0 || earnedBadges.length > 0;
+  const starLabel = starCount < 10 ? '⭐'.repeat(starCount) : `${toPersianDigits(starCount)} ⭐`;
+
+  const handleShareAchievement = () => {
+    const topBadge = [...BADGE_LEVELS].reverse().find((b) => earnedBadges.includes(b.id));
+    if (!topBadge) return;
+    shareText(topBadge.shareText, () =>
+      showToast('متن اشتراک‌گذاری در حافظهٔ موقت کپی شد.', { kind: 'success' })
+    );
+  };
 
   // Determine displayed Arabic text (with or without diacritics)
   const displayedArabicText = settings.showDiacritics
@@ -126,9 +140,7 @@ export const CounterView: React.FC<CounterViewProps> = ({
         if (reachedTarget || reachedMultipleOfTarget) {
           triggerVibration([80, 60, 130], settings.vibrationEnabled, 'strong');
           playTargetReachedChime(settings.soundEnabled);
-          setMilestoneBanner(
-            `الحمدلله! به هدف ${toPersianDigits(nextCount)} مرتبه رسیدید.`
-          );
+          setMilestoneBanner(TARGET_REACHED_MESSAGE(toPersianDigits(nextCount)));
           setTimeout(() => setMilestoneBanner(null), 3500);
         } else {
           triggerVibration(12, settings.vibrationEnabled, settings.vibrationIntensity);
@@ -171,72 +183,58 @@ export const CounterView: React.FC<CounterViewProps> = ({
   const tasbihatStage = activeDhikr.isTasbihatZahra
     ? getTasbihatStageDetail(activeDhikr.count)
     : null;
+  const hasCustomStages = !!activeDhikr.customStages && activeDhikr.customStages.length > 0;
+  const customStage =
+    hasCustomStages && activeDhikr.customStages
+      ? getCustomStageDetail(activeDhikr.customStages, activeDhikr.count)
+      : null;
 
   return (
     <div className="flex flex-col flex-1 w-full max-w-md mx-auto px-3 pt-2 pb-4 select-none">
-      {/* Top Action & Dhikr Switcher Row */}
-      <div className="flex items-center justify-between gap-2 mb-2.5">
-        {/* Active Dhikr Switcher Button */}
+      {/* Top utilities: Reset & Decrement, with visible text labels */}
+      <div className="flex items-center gap-1.5 mb-2.5">
+        <HoldResetButton
+          onResetConfirmed={onReset}
+          disabled={activeDhikr.count === 0}
+          vibrationEnabled={settings.vibrationEnabled}
+        />
+        <button
+          type="button"
+          onClick={() => activeDhikr.count > 0 && onIncrement(-1)}
+          disabled={activeDhikr.count === 0}
+          title="کاهش یک عدد"
+          aria-label="کاهش یک عدد"
+          className="flex-1 flex items-center justify-center gap-1.5 h-11 px-3.5 rounded-2xl bg-[var(--surface)] border border-[var(--border)] text-[var(--muted)] hover:text-[var(--text)] hover:border-[var(--accent)]/40 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+        >
+          <Minus className="w-4 h-4 shrink-0" />
+          <span className="text-xs font-bold whitespace-nowrap">کم کردن یک عدد</span>
+        </button>
+      </div>
+
+      {/* Dhikr name (label only) + explicit Library button */}
+      <div className="flex items-center gap-2 mb-2.5">
+        <div className="flex-1 bg-[var(--surface)] border border-[var(--accent)]/30 rounded-2xl px-3.5 py-2 text-right shadow-sm min-w-0">
+          <div className="text-[11px] text-[var(--accent)] font-medium">ذکر انتخاب‌شده</div>
+          <div className="text-sm font-bold text-[var(--text)] truncate">{activeDhikr.title}</div>
+        </div>
         <button
           type="button"
           onClick={onOpenLibraryModal}
-          className="flex items-center gap-2 bg-[var(--surface)] hover:bg-[var(--surface-2)] border border-[var(--accent)]/30 rounded-2xl px-3.5 py-2 text-right transition-all shadow-sm max-w-[68%]"
+          className="shrink-0 flex items-center gap-1.5 bg-[var(--accent)] hover:bg-[var(--accent-light)] text-white text-xs font-bold px-3.5 h-[46px] rounded-2xl shadow-sm transition-all"
         >
-          <div className="truncate">
-            <div className="text-[11px] text-[var(--accent)] font-medium">ذکر انتخاب‌شده</div>
-            <div className="text-sm font-bold text-[var(--text)] truncate">
-              {activeDhikr.title}
-            </div>
-          </div>
-          <ChevronDown className="w-4 h-4 text-[var(--accent)] shrink-0" />
+          <BookOpen className="w-4 h-4" />
+          کتابخانهٔ ذکر
         </button>
-
-        {/* Top Corner Safety Utilities: Hold-to-Reset & -1 */}
-        <div className="flex items-center gap-1.5">
-          {/* Decrement -1 Button */}
-          <button
-            type="button"
-            onClick={() => activeDhikr.count > 0 && onIncrement(-1)}
-            disabled={activeDhikr.count === 0}
-            title="کاهش یک عدد (-۱)"
-            aria-label="کاهش یک عدد"
-            className="flex items-center justify-center w-11 h-11 rounded-2xl bg-[var(--surface)] border border-[var(--border)] text-[var(--muted)] hover:text-[var(--text)] hover:border-[var(--accent)]/40 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-          >
-            <Minus className="w-4 h-4" />
-          </button>
-
-          {/* Hold-to-Reset Button (Isolated & Protected) */}
-          <HoldResetButton
-            onResetConfirmed={onReset}
-            disabled={activeDhikr.count === 0}
-            vibrationEnabled={settings.vibrationEnabled}
-          />
-        </div>
       </div>
-
-      {/* Quick Prompt to Switch to Today's Weekday Dhikr if not already selected */}
-      {todayWeekdayDhikr && activeDhikr.id !== todayWeekdayDhikr.id && (
-        <div className="flex items-center justify-between bg-[var(--surface)]/75 border border-[var(--accent)]/25 rounded-xl px-3 py-1.5 mb-2 text-xs">
-          <div className="flex items-center gap-1.5 text-[var(--muted)] truncate">
-            <Sparkles className="w-3.5 h-3.5 text-[var(--accent)] shrink-0" />
-            <span className="truncate">
-              ذکر امروز ({shamsiToday.weekdayName}):{' '}
-              <strong className="text-[var(--text)]">{todayWeekdayDhikr.arabicText}</strong>
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={() => onSelectDhikr(todayWeekdayDhikr.id)}
-            className="text-[var(--accent)] hover:underline font-bold shrink-0 mr-2"
-          >
-            انتخاب
-          </button>
-        </div>
-      )}
 
       {/* Tasbihat Hazrat Zahra 3-Stage Automatic Indicator */}
       {activeDhikr.isTasbihatZahra && (
         <TasbihatStageBar totalCount={activeDhikr.count} />
+      )}
+
+      {/* Custom multi-stage dhikr indicator */}
+      {hasCustomStages && activeDhikr.customStages && (
+        <CustomStageBar stages={activeDhikr.customStages} totalCount={activeDhikr.count} />
       )}
 
       {/* Sacred Dhikr Text & Translation Card */}
@@ -245,7 +243,11 @@ export const CounterView: React.FC<CounterViewProps> = ({
           className="text-lg sm:text-xl font-bold text-[var(--text)] leading-relaxed tracking-wide mb-1.5"
           dir="rtl"
         >
-          {tasbihatStage ? tasbihatStage.arabicTitle : displayedArabicText}
+          {tasbihatStage
+            ? tasbihatStage.arabicTitle
+            : customStage
+            ? customStage.stageName
+            : displayedArabicText}
         </p>
         {activeDhikr.translation && (
           <p className="text-xs text-[var(--muted)] leading-relaxed line-clamp-2">
@@ -367,7 +369,11 @@ export const CounterView: React.FC<CounterViewProps> = ({
           {/* Center Numeral Display */}
           <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4">
             <span className="text-[11px] font-medium text-[var(--muted)] mb-0.5">
-              {tasbihatStage ? tasbihatStage.persianTitle : 'شمارش فعلی'}
+              {tasbihatStage
+                ? tasbihatStage.persianTitle
+                : customStage
+                ? `مرحله ${toPersianDigits(customStage.stageNumber)}`
+                : 'شمارش فعلی'}
             </span>
 
             {/* Huge Tabular Persian Numeral */}
@@ -393,6 +399,36 @@ export const CounterView: React.FC<CounterViewProps> = ({
           <span className="w-2 h-2 rounded-full bg-[var(--accent)] animate-pulse" />
           <span>برای شمارش، روی هر نقطه از این کادر ضربه بزنید</span>
         </div>
+      </div>
+
+      {/* Persistent star/badge section */}
+      <div className="mt-3 flex items-center gap-2 bg-[var(--surface)] border border-[var(--border)] rounded-2xl px-4 py-3">
+        {hasAnyAchievement ? (
+          <>
+            <Star className="w-4 h-4 text-[var(--accent)] shrink-0" />
+            <span className="text-xs font-bold text-[var(--text)]">{starLabel}</span>
+            <div className="flex items-center gap-1">
+              {BADGE_LEVELS.filter((b) => earnedBadges.includes(b.id)).map((b) => (
+                <span key={b.id} className="text-base" title={b.label}>
+                  {b.emoji}
+                </span>
+              ))}
+            </div>
+            {earnedBadges.length > 0 && (
+              <button
+                type="button"
+                onClick={handleShareAchievement}
+                title="اشتراک‌گذاری مدال"
+                aria-label="اشتراک‌گذاری مدال"
+                className="mr-auto flex items-center justify-center w-8 h-8 rounded-xl bg-[var(--accent)]/10 text-[var(--accent)] hover:bg-[var(--accent)]/20 transition-all"
+              >
+                <Share2 className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </>
+        ) : (
+          <span className="text-xs text-[var(--muted)]">هنوز ستاره یا مدالی دریافت نکرده‌اید</span>
+        )}
       </div>
 
       {/* Target Configuration Modal */}

@@ -2,61 +2,79 @@
 
 /*
  * Theming system: two independent axes.
- *  - data-theme="night" | "day"   → overall lightness (dark mode / light mode)
- *  - data-palette="emerald" | ... → base hue family (background color scheme)
+ *  - data-theme="night" | "day"     → overall lightness (dark mode / light mode)
+ *  - data-palette="green" | ...     → soft background tint (does NOT affect
+ *    the accent color — the brand green below is fixed everywhere)
  * Both are applied as attributes on <html> by App.tsx from UserSettings.
+ *
+ * --accent/--accent-light/--accent-dark are a FIXED rich green, identical in
+ * both day and night mode and regardless of the chosen background palette —
+ * this is the app's one true brand color for every button/icon/highlight.
  */
 :root {
-  --hue: 156;
-  --accent-hue: 45;
+  --hue: 100;
+  --pal-sat: 32%;
+  --brand-h: 92;
+  --brand-s: 42%;
+  --brand-l: 32%;
 }
 
 :root,
 :root:not([data-theme='day']) {
   color-scheme: dark;
-  --bg: hsl(var(--hue) 42% 6%);
-  --surface: hsl(var(--hue) 28% 10%);
-  --surface-2: hsl(var(--hue) 26% 14%);
-  --border: hsl(var(--hue) 24% 18%);
+  --bg: hsl(var(--hue) var(--pal-sat) 6%);
+  --surface: hsl(var(--hue) calc(var(--pal-sat) - 6%) 10%);
+  --surface-2: hsl(var(--hue) calc(var(--pal-sat) - 8%) 14%);
+  --border: hsl(var(--hue) calc(var(--pal-sat) - 12%) 19%);
   --text: hsl(140 20% 96%);
   --muted: hsl(150 12% 65%);
-  --accent: hsl(var(--accent-hue) 65% 52%);
-  --accent-light: hsl(var(--accent-hue) 70% 68%);
-  --accent-dark: hsl(var(--accent-hue) 58% 35%);
+  --accent: hsl(var(--brand-h) var(--brand-s) var(--brand-l));
+  --accent-light: hsl(var(--brand-h) 48% 44%);
+  --accent-dark: hsl(var(--brand-h) 52% 20%);
   --success: hsl(160 84% 39%);
   --danger: hsl(0 84% 60%);
 }
 
 :root[data-theme='day'] {
   color-scheme: light;
-  --bg: hsl(var(--hue) 38% 97%);
-  --surface: hsl(var(--hue) 32% 100%);
-  --surface-2: hsl(var(--hue) 28% 93%);
-  --border: hsl(var(--hue) 22% 85%);
-  --text: hsl(160 30% 12%);
-  --muted: hsl(160 12% 38%);
-  --accent: hsl(var(--accent-hue) 70% 40%);
-  --accent-light: hsl(var(--accent-hue) 75% 52%);
-  --accent-dark: hsl(var(--accent-hue) 55% 28%);
+  --bg: hsl(var(--hue) calc(var(--pal-sat) - 4%) 97%);
+  --surface: hsl(var(--hue) calc(var(--pal-sat) - 10%) 100%);
+  --surface-2: hsl(var(--hue) calc(var(--pal-sat) - 14%) 93%);
+  --border: hsl(var(--hue) calc(var(--pal-sat) - 16%) 86%);
+  --text: hsl(160 30% 14%);
+  --muted: hsl(160 12% 40%);
+  --accent: hsl(var(--brand-h) var(--brand-s) var(--brand-l));
+  --accent-light: hsl(var(--brand-h) 48% 44%);
+  --accent-dark: hsl(var(--brand-h) 52% 20%);
   --success: hsl(160 84% 30%);
   --danger: hsl(0 74% 48%);
 }
 
-[data-palette='emerald'] {
-  --hue: 156;
-  --accent-hue: 45;
+/* Background palette — 6 soft, light tints, matched to the reference
+   screenshot. Never touches --brand-* (the fixed accent green). */
+[data-palette='green'] {
+  --hue: 100;
+  --pal-sat: 32%;
 }
-[data-palette='sapphire'] {
-  --hue: 205;
-  --accent-hue: 190;
+[data-palette='cream'] {
+  --hue: 46;
+  --pal-sat: 55%;
 }
-[data-palette='plum'] {
-  --hue: 280;
-  --accent-hue: 322;
+[data-palette='gray'] {
+  --hue: 250;
+  --pal-sat: 6%;
 }
-[data-palette='amber'] {
-  --hue: 26;
-  --accent-hue: 38;
+[data-palette='lilac'] {
+  --hue: 263;
+  --pal-sat: 40%;
+}
+[data-palette='blue'] {
+  --hue: 200;
+  --pal-sat: 48%;
+}
+[data-palette='pink'] {
+  --hue: 344;
+  --pal-sat: 50%;
 }
 
 @layer base {

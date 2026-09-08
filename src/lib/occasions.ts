@@ -1,5 +1,6 @@
 import { RELIGIOUS_OCCASIONS, ReligiousOccasion } from '../data/religiousOccasions';
 import { HijriDateInfo } from '../utils/hijri';
+import { getShamsiDateInfo, toPersianDigits } from '../utils/persian';
 
 const APPROX_HIJRI_YEAR_LENGTH = 354.36;
 
@@ -13,16 +14,22 @@ export function getTodaysOccasions(today: HijriDateInfo): ReligiousOccasion[] {
 
 export interface UpcomingOccasion extends ReligiousOccasion {
   daysUntil: number;
+  shamsiLabel: string;
 }
 
-/** Sorted by circular proximity to today's Hijri date. daysUntil is approximate. */
+/** Sorted by circular proximity to today's Hijri date. daysUntil/shamsiLabel are approximate. */
 export function getUpcomingOccasions(today: HijriDateInfo, count = 8): UpcomingOccasion[] {
   const todayDOY = approxDayOfYear(today.month, today.day);
   return RELIGIOUS_OCCASIONS.map((o) => {
     const occDOY = approxDayOfYear(o.hijriMonth, o.hijriDay);
     let diff = occDOY - todayDOY;
     if (diff < 0) diff += APPROX_HIJRI_YEAR_LENGTH;
-    return { ...o, daysUntil: Math.round(diff) };
+    const daysUntil = Math.round(diff);
+    const projectedDate = new Date();
+    projectedDate.setDate(projectedDate.getDate() + daysUntil);
+    const shamsiInfo = getShamsiDateInfo(projectedDate);
+    const shamsiLabel = `${toPersianDigits(shamsiInfo.day)} ${shamsiInfo.monthName}`;
+    return { ...o, daysUntil, shamsiLabel };
   })
     .sort((a, b) => a.daysUntil - b.daysUntil)
     .slice(0, count);

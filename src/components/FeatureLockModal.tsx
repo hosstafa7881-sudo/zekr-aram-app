@@ -1,14 +1,14 @@
 import React from 'react';
 import { Lock, X } from 'lucide-react';
-import { TRIAL_ENDED_MESSAGE } from '../lib/subscription';
 
 interface FeatureLockModalProps {
   isOpen: boolean;
+  message: string;
   onClose: () => void;
   onSubscribe: () => void;
 }
 
-export const FeatureLockModal: React.FC<FeatureLockModalProps> = ({ isOpen, onClose, onSubscribe }) => {
+export const FeatureLockModal: React.FC<FeatureLockModalProps> = ({ isOpen, message, onClose, onSubscribe }) => {
   if (!isOpen) return null;
 
   return (
@@ -17,7 +17,7 @@ export const FeatureLockModal: React.FC<FeatureLockModalProps> = ({ isOpen, onCl
         <div className="w-14 h-14 mx-auto rounded-2xl bg-[var(--accent)]/15 border border-[var(--accent)]/40 flex items-center justify-center text-[var(--accent)] mb-3">
           <Lock className="w-7 h-7" />
         </div>
-        <p className="text-sm text-[var(--text)] leading-relaxed mb-5">{TRIAL_ENDED_MESSAGE}</p>
+        <p className="text-sm text-[var(--text)] leading-relaxed mb-5">{message}</p>
         <div className="flex items-center gap-2">
           <button
             type="button"
@@ -29,7 +29,7 @@ export const FeatureLockModal: React.FC<FeatureLockModalProps> = ({ isOpen, onCl
           <button
             type="button"
             onClick={onSubscribe}
-            className="flex-1 py-2.5 rounded-xl bg-[var(--accent)] text-[var(--bg)] text-xs font-bold shadow-lg hover:bg-[var(--accent-light)]"
+            className="flex-1 py-2.5 rounded-xl bg-[var(--accent)] text-white text-xs font-bold shadow-lg hover:bg-[var(--accent-light)]"
           >
             تهیه اشتراک
           </button>

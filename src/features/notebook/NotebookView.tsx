@@ -1,11 +1,16 @@
 import React, { useState } from 'react';
 import { NotebookItemDef, NotebookDayEntry, FEELING_STICKERS } from './notebookTypes';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
-import { Plus, Trash2, Check, Smile } from 'lucide-react';
+import { useToast } from '../../components/ToastProvider';
+import { getTrialDaysRemaining } from '../../lib/subscription';
+import { toPersianDigits } from '../../utils/persian';
+import { NOTEBOOK_TRIAL_BANNER } from '../../lib/messages';
+import { Plus, Trash2, Check, Smile, ClipboardCheck } from 'lucide-react';
 
 interface NotebookViewProps {
   items: NotebookItemDef[];
   todayEntry: NotebookDayEntry;
+  isProUser: boolean;
   onAddItem: (text: string) => void;
   onDeleteItem: (id: string) => void;
   onToggleItem: (id: string) => void;
@@ -17,6 +22,7 @@ interface NotebookViewProps {
 export const NotebookView: React.FC<NotebookViewProps> = ({
   items,
   todayEntry,
+  isProUser,
   onAddItem,
   onDeleteItem,
   onToggleItem,
@@ -26,6 +32,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({
 }) => {
   const [newItemText, setNewItemText] = useState('');
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const { showToast } = useToast();
 
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,14 +42,24 @@ export const NotebookView: React.FC<NotebookViewProps> = ({
     setNewItemText('');
   };
 
+  const handleSaveNotebook = () => {
+    showToast('ثبت شد', { kind: 'success' });
+  };
+
   return (
     <div className="flex flex-col flex-1 w-full max-w-2xl mx-auto px-3 pt-2 pb-6 space-y-4">
       <div>
-        <h2 className="text-lg font-bold text-[var(--text)]">دفترچهٔ کارهای خوب امروز</h2>
+        <h2 className="text-lg font-bold text-[var(--text)]">دفترچه‌ی کارهای خوب</h2>
         <p className="text-xs text-[var(--muted)]">
           هر روز کارهای خوبتون رو ثبت کنید و اگه کاری انجام نشد، دلیلش رو یادداشت کنید تا بهتر بشید.
         </p>
       </div>
+
+      {!isProUser && (
+        <div className="bg-[var(--accent)]/10 border border-[var(--accent)]/30 rounded-2xl px-4 py-2.5 text-xs font-bold text-[var(--text)] text-center">
+          {NOTEBOOK_TRIAL_BANNER(toPersianDigits(getTrialDaysRemaining()))}
+        </div>
+      )}
 
       {/* Checklist */}
       <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-4 space-y-2.5">
@@ -108,7 +125,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({
           />
           <button
             type="submit"
-            className="flex items-center justify-center gap-1 bg-[var(--accent)] hover:bg-[var(--accent-light)] text-[var(--bg)] text-xs font-bold px-3.5 py-2 rounded-xl transition-all"
+            className="flex items-center justify-center gap-1 bg-[var(--accent)] hover:bg-[var(--accent-light)] text-white text-xs font-bold px-3.5 py-2 rounded-xl transition-all"
           >
             <Plus className="w-4 h-4" />
             افزودن
@@ -149,6 +166,15 @@ export const NotebookView: React.FC<NotebookViewProps> = ({
           })}
         </div>
       </div>
+
+      <button
+        type="button"
+        onClick={handleSaveNotebook}
+        className="w-full flex items-center justify-center gap-2 bg-[var(--accent)] hover:bg-[var(--accent-light)] text-white font-bold py-3 rounded-2xl shadow-md transition-all"
+      >
+        <ClipboardCheck className="w-4 h-4" />
+        ثبت دفترچه
+      </button>
 
       <ConfirmDialog
         isOpen={pendingDeleteId !== null}
