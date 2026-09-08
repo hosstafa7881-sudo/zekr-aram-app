@@ -8,6 +8,11 @@ import {
   BackupPayload,
 } from '../../lib/db';
 import { toPersianDigits, getShamsiDateInfo } from '../../utils/persian';
+import { computeLifetimeTotal } from '../../lib/gamification';
+import { LockedFeatureId } from '../../lib/subscription';
+import { LockedSectionTeaser } from '../../components/LockedSectionTeaser';
+import { NotebookItemDef, NotebookDayEntry } from '../notebook/notebookTypes';
+import { HistorySearchCalendar } from './HistorySearchCalendar';
 import {
   Calendar,
   Download,
@@ -16,6 +21,8 @@ import {
   AlertCircle,
   BarChart3,
   Award,
+  Search,
+  ListChecks,
 } from 'lucide-react';
 
 interface HistoryBackupViewProps {
@@ -23,7 +30,11 @@ interface HistoryBackupViewProps {
   activeDhikrId: string;
   dailyLogs: DailyLog[];
   settings: UserSettings;
+  notebookItems: NotebookItemDef[];
+  notebookEntries: NotebookDayEntry[];
   onRestoreBackup: (payload: BackupPayload) => void;
+  onDeleteDailyLog: (dateKey: string) => void;
+  guard: (featureId: LockedFeatureId, onAllowed: () => void) => void;
 }
 
 export const HistoryBackupView: React.FC<HistoryBackupViewProps> = ({
@@ -31,22 +42,39 @@ export const HistoryBackupView: React.FC<HistoryBackupViewProps> = ({
   activeDhikrId,
   dailyLogs,
   settings,
+  notebookItems,
+  notebookEntries,
   onRestoreBackup,
+  onDeleteDailyLog,
+  guard,
 }) => {
   const [statusMessage, setStatusMessage] = useState<{
     type: 'success' | 'error';
     text: string;
   } | null>(null);
+  const [isChartRevealed, setIsChartRevealed] = useState(false);
+  const [isSearchRevealed, setIsSearchRevealed] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const shamsiToday = getShamsiDateInfo();
   const todayLog = dailyLogs.find((l) => l.dateKey === shamsiToday.dateKey);
   const todayCount = todayLog ? todayLog.totalCount : 0;
 
-  const totalLifetimeCount = dhikrs.reduce(
-    (sum, item) => sum + (item.totalAllTime || 0),
-    0
-  );
+  const totalLifetimeCount = computeLifetimeTotal(dailyLogs);
+
+  // This month (Jalali) summary — always free
+  const thisMonthLogs = dailyLogs.filter((l) => {
+    const info = getShamsiDateInfo(new Date(l.dateKey + 'T00:00:00'));
+    return info.year === shamsiToday.year && info.month === shamsiToday.month;
+  });
+  const thisMonthTotal = thisMonthLogs.reduce((sum, l) => sum + l.totalCount, 0);
+  const thisMonthBreakdown = new Map<string, { title: string; count: number }>();
+  thisMonthLogs.forEach((l) => {
+    Object.entries(l.breakdown).forEach(([id, item]) => {
+      const existing = thisMonthBreakdown.get(id);
+      thisMonthBreakdown.set(id, { title: item.title, count: (existing?.count || 0) + item.count });
+    });
+  });
 
   // Prepare last 7 days chart data
   const last7Days = Array.from({ length: 7 }, (_, idx) => {
@@ -68,7 +96,7 @@ export const HistoryBackupView: React.FC<HistoryBackupViewProps> = ({
   // Handle JSON Backup Download
   const handleExportJSON = () => {
     try {
-      const jsonStr = exportBackupJSON(dhikrs, activeDhikrId, dailyLogs, settings);
+      const jsonStr = exportBackupJSON(dhikrs, activeDhikrId, dailyLogs, settings, notebookItems, notebookEntries);
       const blob = new Blob([jsonStr], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -148,55 +176,91 @@ export const HistoryBackupView: React.FC<HistoryBackupViewProps> = ({
         </div>
       </div>
 
-      {/* 7-Day Shamsi Visual Bar Chart */}
+      {/* This month summary — always free */}
       <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-4">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <BarChart3 className="w-4 h-4 text-[var(--accent)]" />
-            <h3 className="text-sm font-bold text-[var(--text)]">نمودار ۷ روز اخیر (تقویم شمسی)</h3>
+            <ListChecks className="w-4 h-4 text-[var(--accent)]" />
+            <h3 className="text-sm font-bold text-[var(--text)]">این ماه</h3>
           </div>
-          <span className="text-xs text-[var(--muted)]">بر اساس روز</span>
+          <span className="text-xs font-extrabold text-[var(--accent)] tabular-nums-fa">
+            {toPersianDigits(thisMonthTotal)} ذکر
+          </span>
         </div>
-
-        <div className="grid grid-cols-7 gap-2 items-end h-36 pt-4 pb-1 px-1">
-          {last7Days.map((day) => {
-            const heightPct = Math.max(8, Math.round((day.count / maxDayCount) * 100));
-            const isToday = day.dateKey === shamsiToday.dateKey;
-
-            return (
-              <div key={day.dateKey} className="flex flex-col items-center h-full justify-end">
-                <div className="text-[10px] font-bold text-[var(--muted)] tabular-nums-fa mb-1">
-                  {day.count > 0 ? toPersianDigits(day.count) : ''}
-                </div>
-                <div className="w-full max-w-[28px] bg-[var(--bg)] rounded-t-lg h-24 flex items-end overflow-hidden border border-[var(--border)]">
-                  <div
-                    style={{ height: `${heightPct}%` }}
-                    className={`w-full rounded-t-md transition-all duration-300 ${
-                      isToday
-                        ? 'bg-gradient-to-t from-[var(--accent-dark)] to-[var(--accent)]'
-                        : day.count > 0
-                        ? 'bg-[var(--success)]/70'
-                        : 'bg-[var(--border)]'
-                    }`}
-                  />
-                </div>
-                <div
-                  className={`text-[10px] font-bold mt-1.5 ${
-                    isToday ? 'text-[var(--accent)]' : 'text-[var(--muted)]'
-                  }`}
-                >
-                  {day.weekdayName}
-                </div>
-                <div className="text-[9px] text-[var(--muted)]/70 tabular-nums-fa">
-                  {toPersianDigits(day.dayNum)} {day.monthName}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        {thisMonthBreakdown.size === 0 ? (
+          <p className="text-xs text-[var(--muted)] text-center py-2">هنوز این ماه ذکری ثبت نشده است.</p>
+        ) : (
+          <div className="flex flex-wrap gap-1.5">
+            {Array.from(thisMonthBreakdown.entries()).map(([id, item]) => (
+              <span
+                key={id}
+                className="inline-flex items-center gap-1 bg-[var(--bg)] text-[var(--muted)] text-[11px] px-2 py-0.5 rounded-lg border border-[var(--border)] tabular-nums-fa"
+              >
+                <span>{item.title}:</span>
+                <strong className="text-[var(--text)]">{toPersianDigits(item.count)}</strong>
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Backup & Restore Card (Anti-Data-Loss Guarantee) */}
+      {/* 7-Day Shamsi Visual Bar Chart — locked after trial */}
+      {isChartRevealed ? (
+        <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-4">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <BarChart3 className="w-4 h-4 text-[var(--accent)]" />
+              <h3 className="text-sm font-bold text-[var(--text)]">نمودار ۷ روز اخیر (تقویم شمسی)</h3>
+            </div>
+            <span className="text-xs text-[var(--muted)]">بر اساس روز</span>
+          </div>
+
+          <div className="grid grid-cols-7 gap-2 items-end h-36 pt-4 pb-1 px-1">
+            {last7Days.map((day) => {
+              const heightPct = Math.max(8, Math.round((day.count / maxDayCount) * 100));
+              const isToday = day.dateKey === shamsiToday.dateKey;
+
+              return (
+                <div key={day.dateKey} className="flex flex-col items-center h-full justify-end">
+                  <div className="text-[10px] font-bold text-[var(--muted)] tabular-nums-fa mb-1">
+                    {day.count > 0 ? toPersianDigits(day.count) : ''}
+                  </div>
+                  <div className="w-full max-w-[28px] bg-[var(--bg)] rounded-t-lg h-24 flex items-end overflow-hidden border border-[var(--border)]">
+                    <div
+                      style={{ height: `${heightPct}%` }}
+                      className={`w-full rounded-t-md transition-all duration-300 ${
+                        isToday
+                          ? 'bg-gradient-to-t from-[var(--accent-dark)] to-[var(--accent)]'
+                          : day.count > 0
+                          ? 'bg-[var(--success)]/70'
+                          : 'bg-[var(--border)]'
+                      }`}
+                    />
+                  </div>
+                  <div
+                    className={`text-[10px] font-bold mt-1.5 ${
+                      isToday ? 'text-[var(--accent)]' : 'text-[var(--muted)]'
+                    }`}
+                  >
+                    {day.weekdayName}
+                  </div>
+                  <div className="text-[9px] text-[var(--muted)]/70 tabular-nums-fa">
+                    {toPersianDigits(day.dayNum)} {day.monthName}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : (
+        <LockedSectionTeaser
+          title="نمودار ۷ روز اخیر"
+          description="روند ذکر گفتنتان در ۷ روز گذشته را به‌صورت نموداری ببینید."
+          onReveal={() => guard('history-chart', () => setIsChartRevealed(true))}
+        />
+      )}
+
+      {/* Backup & Restore Card (Anti-Data-Loss Guarantee) — always free */}
       <div className="bg-[var(--surface)] border border-[var(--accent)]/35 rounded-2xl p-4">
         <h3 className="text-sm font-bold text-[var(--text)] mb-1">
           پشتیبان‌گیری و انتقال امن اطلاعات (JSON)
@@ -250,49 +314,22 @@ export const HistoryBackupView: React.FC<HistoryBackupViewProps> = ({
         </div>
       </div>
 
-      {/* Daily Breakdown Log List */}
-      <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-4">
-        <h3 className="text-sm font-bold text-[var(--text)] mb-3">
-          ریز آمار روزهای گذشته
-        </h3>
-
-        {dailyLogs.length === 0 ? (
-          <p className="text-xs text-[var(--muted)] text-center py-6">
-            هنوز آماری ثبت نشده است. با اولین ضربه روی شمارنده، آمار امروز ثبت می‌شود.
-          </p>
-        ) : (
-          <div className="space-y-2.5 max-h-72 overflow-y-auto pr-1">
-            {dailyLogs.slice(0, 14).map((log) => (
-              <div
-                key={log.dateKey}
-                className="bg-[var(--bg)]/80 border border-[var(--border)] rounded-xl p-3"
-              >
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-xs font-bold text-[var(--text)]">
-                    {log.shamsiDate}
-                  </span>
-                  <span className="text-xs font-extrabold text-[var(--accent)] tabular-nums-fa">
-                    مجموع: {toPersianDigits(log.totalCount)} ذکر
-                  </span>
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {Object.entries(log.breakdown).map(([id, item]) => (
-                    <span
-                      key={id}
-                      className="inline-flex items-center gap-1 bg-[var(--surface)] text-[var(--muted)] text-[11px] px-2 py-0.5 rounded-lg border border-[var(--border)] tabular-nums-fa"
-                    >
-                      <span>{item.title}:</span>
-                      <strong className="text-[var(--text)]">
-                        {toPersianDigits(item.count)}
-                      </strong>
-                    </span>
-                  ))}
-                </div>
-              </div>
-            ))}
+      {/* Jalali search calendar — locked after trial */}
+      {isSearchRevealed ? (
+        <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Search className="w-4 h-4 text-[var(--accent)]" />
+            <h3 className="text-sm font-bold text-[var(--text)]">جست‌وجوی تاریخچه (تقویم شمسی)</h3>
           </div>
-        )}
-      </div>
+          <HistorySearchCalendar dailyLogs={dailyLogs} onDeleteDay={onDeleteDailyLog} />
+        </div>
+      ) : (
+        <LockedSectionTeaser
+          title="جست‌وجوی تاریخچه"
+          description="با یک تقویم شمسی، آمار هر روز قبلی را جست‌وجو و مرور کنید."
+          onReveal={() => guard('history-stats', () => setIsSearchRevealed(true))}
+        />
+      )}
     </div>
   );
 };

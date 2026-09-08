@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { DhikrItem, TargetMode } from '../../lib/seedData';
 import { toPersianDigits, getShamsiDateInfo } from '../../utils/persian';
+import { canAddCustomDhikr, CUSTOM_DHIKR_LIMIT_MESSAGE, CUSTOM_DHIKR_DELETE_CONFIRM_MESSAGE } from '../../lib/dhikrLimits';
+import { LOCKED_DHIKR_IDS, LockedFeatureId } from '../../lib/subscription';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
 import {
   Plus,
   Check,
@@ -10,6 +13,7 @@ import {
   BookOpen,
   Calendar,
   X,
+  Lock,
 } from 'lucide-react';
 
 interface DhikrLibraryViewProps {
@@ -19,6 +23,7 @@ interface DhikrLibraryViewProps {
   onAddCustomDhikr: (newItem: Omit<DhikrItem, 'id' | 'count' | 'totalAllTime' | 'updatedAt'>) => void;
   onEditDhikr: (updated: DhikrItem) => void;
   onDeleteDhikr: (id: string) => void;
+  guard: (featureId: LockedFeatureId, onAllowed: () => void) => void;
 }
 
 export const DhikrLibraryView: React.FC<DhikrLibraryViewProps> = ({
@@ -28,10 +33,13 @@ export const DhikrLibraryView: React.FC<DhikrLibraryViewProps> = ({
   onAddCustomDhikr,
   onEditDhikr,
   onDeleteDhikr,
+  guard,
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<DhikrItem | null>(null);
+  const [limitNoticeOpen, setLimitNoticeOpen] = useState(false);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
   // Form fields
   const [title, setTitle] = useState('');
@@ -43,6 +51,10 @@ export const DhikrLibraryView: React.FC<DhikrLibraryViewProps> = ({
   const shamsiToday = getShamsiDateInfo();
 
   const openAddModal = () => {
+    if (!canAddCustomDhikr(dhikrs)) {
+      setLimitNoticeOpen(true);
+      return;
+    }
     setEditingItem(null);
     setTitle('');
     setArabicText('');
@@ -65,12 +77,20 @@ export const DhikrLibraryView: React.FC<DhikrLibraryViewProps> = ({
 
   const handleSaveForm = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !arabicText.trim()) return;
+    const hasAnyField = title.trim() || arabicText.trim() || translation.trim();
+    if (!hasAnyField) return;
+    if (!editingItem && !canAddCustomDhikr(dhikrs)) {
+      setIsFormOpen(false);
+      setLimitNoticeOpen(true);
+      return;
+    }
+
+    const fallbackTitle = title.trim() || arabicText.trim() || translation.trim();
 
     if (editingItem) {
       onEditDhikr({
         ...editingItem,
-        title: title.trim(),
+        title: title.trim() || fallbackTitle,
         arabicText: arabicText.trim(),
         translation: translation.trim(),
         target: Math.max(1, Number(target) || 100),
@@ -79,7 +99,7 @@ export const DhikrLibraryView: React.FC<DhikrLibraryViewProps> = ({
       });
     } else {
       onAddCustomDhikr({
-        title: title.trim(),
+        title: title.trim() || fallbackTitle,
         arabicText: arabicText.trim(),
         translation: translation.trim(),
         target: Math.max(1, Number(target) || 100),
@@ -151,10 +171,16 @@ export const DhikrLibraryView: React.FC<DhikrLibraryViewProps> = ({
           const isTodayWeekday =
             item.category === 'weekday' && item.weekdayIndex === shamsiToday.weekdayIndex;
 
+          const lockedFeatureId = LOCKED_DHIKR_IDS[item.id];
+
           return (
             <div
               key={item.id}
-              onClick={() => onSelectDhikr(item.id)}
+              onClick={() =>
+                lockedFeatureId
+                  ? guard(lockedFeatureId, () => onSelectDhikr(item.id))
+                  : onSelectDhikr(item.id)
+              }
               className={`relative flex flex-col justify-between p-4 rounded-2xl border cursor-pointer transition-all ${
                 isSelected
                   ? 'bg-[var(--surface-2)] border-[var(--accent)] shadow-lg'
@@ -164,7 +190,7 @@ export const DhikrLibraryView: React.FC<DhikrLibraryViewProps> = ({
               <div>
                 {/* Top Badges & Actions */}
                 <div className="flex items-center justify-between gap-2 mb-2">
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 flex-wrap">
                     {isTodayWeekday && (
                       <span className="inline-flex items-center gap-1 bg-[var(--accent)]/20 text-[var(--accent)] text-[10px] font-bold px-2 py-0.5 rounded-md border border-[var(--accent)]/40">
                         <Calendar className="w-3 h-3" />
@@ -175,6 +201,12 @@ export const DhikrLibraryView: React.FC<DhikrLibraryViewProps> = ({
                       <span className="inline-flex items-center gap-1 bg-[var(--success)]/20 text-[var(--success)] text-[10px] font-bold px-2 py-0.5 rounded-md border border-[var(--success)]/40">
                         <Sparkles className="w-3 h-3" />
                         ۳ مرحله‌ای خودکار
+                      </span>
+                    )}
+                    {lockedFeatureId && (
+                      <span className="inline-flex items-center gap-1 bg-[var(--muted)]/15 text-[var(--muted)] text-[10px] font-bold px-2 py-0.5 rounded-md border border-[var(--border)]">
+                        <Lock className="w-3 h-3" />
+                        ویژه مشترکین
                       </span>
                     )}
                   </div>
@@ -193,9 +225,7 @@ export const DhikrLibraryView: React.FC<DhikrLibraryViewProps> = ({
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          if (window.confirm(`آیا از حذف «${item.title}» مطمئن هستید؟`)) {
-                            onDeleteDhikr(item.id);
-                          }
+                          setPendingDeleteId(item.id);
                         }}
                         title="حذف ذکر"
                         className="p-1.5 rounded-lg text-[var(--muted)] hover:text-[var(--danger)] hover:bg-[var(--danger)]/10"
@@ -270,13 +300,15 @@ export const DhikrLibraryView: React.FC<DhikrLibraryViewProps> = ({
             </div>
 
             <form onSubmit={handleSaveForm} className="mt-4 space-y-3.5">
+              <p className="text-[11px] text-[var(--muted)] leading-relaxed -mt-1">
+                لازم نیست هر سه فیلد را پر کنید — حتی با پر کردن فقط یکی از آن‌ها می‌توانید ذخیره کنید.
+              </p>
               <div>
                 <label className="block text-xs font-bold text-[var(--text)] mb-1">
-                  نام یا عنوان ذکر *
+                  نام یا عنوان ذکر
                 </label>
                 <input
                   type="text"
-                  required
                   placeholder="مثلاً: ذکر یونسیه یا دعای فرج"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
@@ -286,10 +318,9 @@ export const DhikrLibraryView: React.FC<DhikrLibraryViewProps> = ({
 
               <div>
                 <label className="block text-xs font-bold text-[var(--text)] mb-1">
-                  متن عربی / ذکر * (پشتیبانی از متن طولانی)
+                  متن عربی / ذکر (پشتیبانی از متن طولانی)
                 </label>
                 <textarea
-                  required
                   rows={3}
                   placeholder="لَا إِلٰهَ إِلَّا أَنْتَ سُبْحَانَكَ إِنِّي كُنْتُ مِنَ الظَّالِمِينَ"
                   value={arabicText}
@@ -361,6 +392,27 @@ export const DhikrLibraryView: React.FC<DhikrLibraryViewProps> = ({
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={pendingDeleteId !== null}
+        title="حذف ذکر دلخواه"
+        message={CUSTOM_DHIKR_DELETE_CONFIRM_MESSAGE}
+        onCancel={() => setPendingDeleteId(null)}
+        onConfirm={() => {
+          if (pendingDeleteId) onDeleteDhikr(pendingDeleteId);
+          setPendingDeleteId(null);
+        }}
+      />
+
+      <ConfirmDialog
+        isOpen={limitNoticeOpen}
+        title="سقف ذکرهای دلخواه"
+        message={CUSTOM_DHIKR_LIMIT_MESSAGE}
+        confirmLabel="متوجه شدم"
+        danger={false}
+        onCancel={() => setLimitNoticeOpen(false)}
+        onConfirm={() => setLimitNoticeOpen(false)}
+      />
     </div>
   );
 };
