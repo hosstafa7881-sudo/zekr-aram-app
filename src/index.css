@@ -1,18 +1,74 @@
 @import "tailwindcss";
 
-@layer base {
-  :root {
-    color-scheme: dark;
-  }
+/*
+ * Theming system: two independent axes.
+ *  - data-theme="night" | "day"   → overall lightness (dark mode / light mode)
+ *  - data-palette="emerald" | ... → base hue family (background color scheme)
+ * Both are applied as attributes on <html> by App.tsx from UserSettings.
+ */
+:root {
+  --hue: 156;
+  --accent-hue: 45;
+}
 
+:root,
+:root:not([data-theme='day']) {
+  color-scheme: dark;
+  --bg: hsl(var(--hue) 42% 6%);
+  --surface: hsl(var(--hue) 28% 10%);
+  --surface-2: hsl(var(--hue) 26% 14%);
+  --border: hsl(var(--hue) 24% 18%);
+  --text: hsl(140 20% 96%);
+  --muted: hsl(150 12% 65%);
+  --accent: hsl(var(--accent-hue) 65% 52%);
+  --accent-light: hsl(var(--accent-hue) 70% 68%);
+  --accent-dark: hsl(var(--accent-hue) 58% 35%);
+  --success: hsl(160 84% 39%);
+  --danger: hsl(0 84% 60%);
+}
+
+:root[data-theme='day'] {
+  color-scheme: light;
+  --bg: hsl(var(--hue) 38% 97%);
+  --surface: hsl(var(--hue) 32% 100%);
+  --surface-2: hsl(var(--hue) 28% 93%);
+  --border: hsl(var(--hue) 22% 85%);
+  --text: hsl(160 30% 12%);
+  --muted: hsl(160 12% 38%);
+  --accent: hsl(var(--accent-hue) 70% 40%);
+  --accent-light: hsl(var(--accent-hue) 75% 52%);
+  --accent-dark: hsl(var(--accent-hue) 55% 28%);
+  --success: hsl(160 84% 30%);
+  --danger: hsl(0 74% 48%);
+}
+
+[data-palette='emerald'] {
+  --hue: 156;
+  --accent-hue: 45;
+}
+[data-palette='sapphire'] {
+  --hue: 205;
+  --accent-hue: 190;
+}
+[data-palette='plum'] {
+  --hue: 280;
+  --accent-hue: 322;
+}
+[data-palette='amber'] {
+  --hue: 26;
+  --accent-hue: 38;
+}
+
+@layer base {
   html,
   body {
     font-family: 'Vazirmatn', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background-color: #091410;
-    color: #F3F7F4;
+    background-color: var(--bg);
+    color: var(--text);
     overscroll-behavior-y: none;
     -webkit-tap-highlight-color: transparent;
     direction: rtl;
+    transition: background-color 0.2s ease, color 0.2s ease;
   }
 }
 
@@ -30,7 +86,7 @@
 
 /* Subtle Islamic Geometric Arch Overlay */
 .sanctuary-arch-bg {
-  background: radial-gradient(circle at 50% 60%, rgba(212, 175, 55, 0.08) 0%, rgba(17, 34, 27, 0.85) 55%, #091410 90%);
+  background: radial-gradient(circle at 50% 60%, color-mix(in oklab, var(--accent) 12%, transparent) 0%, color-mix(in oklab, var(--surface) 90%, transparent) 55%, var(--bg) 90%);
 }
 
 /* Custom scrollbar for long dhikr texts and lists */
@@ -40,14 +96,37 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: #091410;
+  background: var(--bg);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #1C352B;
+  background: var(--border);
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #D4AF37;
+  background: var(--accent);
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-fade-in {
+  animation: fade-in 0.25s ease-out;
+}
+
+/* CSS-only onboarding spotlight (avoids canvas/clip-path issues on some
+   Android GPUs, e.g. Xiaomi devices rendering a blank white square). */
+.onboarding-spotlight {
+  position: relative;
+  z-index: 60;
+  border-radius: 1rem;
+  box-shadow: 0 0 0 4px var(--accent), 0 0 0 9999px rgba(0, 0, 0, 0.72);
 }

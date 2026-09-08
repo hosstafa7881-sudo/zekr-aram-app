@@ -77,10 +77,10 @@ export const HoldResetButton: React.FC<HoldResetButtonProps> = ({
         aria-label="صفر کردن شمارنده با نگه‌داشتن"
         className={`relative flex items-center justify-center w-11 h-11 rounded-2xl border transition-all select-none no-touch-callout ${
           disabled
-            ? 'opacity-30 border-[#1C352B] text-[#94B2A3] cursor-not-allowed'
+            ? 'opacity-30 border-[var(--border)] text-[var(--muted)] cursor-not-allowed'
             : holding
-            ? 'bg-[#EF4444]/20 border-[#EF4444] text-[#EF4444] scale-95'
-            : 'bg-[#11221B]/90 border-[#1C352B] text-[#94B2A3] hover:text-[#F3F7F4] hover:border-[#D4AF37]/40'
+            ? 'bg-[var(--danger)]/20 border-[var(--danger)] text-[var(--danger)] scale-95'
+            : 'bg-[var(--surface)]/90 border-[var(--border)] text-[var(--muted)] hover:text-[var(--text)] hover:border-[var(--accent)]/40'
         }`}
       >
         <svg className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none" viewBox="0 0 44 44">
@@ -89,7 +89,7 @@ export const HoldResetButton: React.FC<HoldResetButtonProps> = ({
             cy="22"
             r={radius}
             fill="none"
-            stroke="rgba(239, 68, 68, 0.2)"
+            stroke="color-mix(in oklab, var(--danger) 20%, transparent)"
             strokeWidth="2.5"
             className={holding ? 'opacity-100' : 'opacity-0'}
           />
@@ -98,7 +98,7 @@ export const HoldResetButton: React.FC<HoldResetButtonProps> = ({
             cy="22"
             r={radius}
             fill="none"
-            stroke="#EF4444"
+            stroke="var(--danger)"
             strokeWidth="2.5"
             strokeDasharray={circumference}
             strokeDashoffset={strokeDashoffset}
@@ -110,7 +110,7 @@ export const HoldResetButton: React.FC<HoldResetButtonProps> = ({
       </button>
 
       {holding && (
-        <span className="text-xs font-medium text-[#EF4444] bg-[#091410]/90 px-2.5 py-1 rounded-lg border border-[#EF4444]/40 animate-pulse whitespace-nowrap">
+        <span className="text-xs font-medium text-[var(--danger)] bg-[var(--bg)]/90 px-2.5 py-1 rounded-lg border border-[var(--danger)]/40 animate-pulse whitespace-nowrap">
           نگه دارید ({Math.ceil(((100 - progress) / 100) * 1.4)} ثانیه)...
         </span>
       )}

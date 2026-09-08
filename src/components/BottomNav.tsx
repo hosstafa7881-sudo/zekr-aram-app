@@ -1,12 +1,14 @@
 import React from 'react';
-import { Disc, BookOpen, BarChart2, Settings } from 'lucide-react';
+import { Home, Disc, NotebookPen, BarChart2, Settings } from 'lucide-react';
 
-export type AppTab = 'counter' | 'library' | 'history' | 'settings';
+export type AppTab = 'home' | 'counter' | 'library' | 'notebook' | 'history' | 'settings' | 'subscription';
 
 interface BottomNavProps {
   activeTab: AppTab;
   onChangeTab: (tab: AppTab) => void;
 }
+
+const NAV_TABS: AppTab[] = ['home', 'counter', 'notebook', 'history', 'settings'];
 
 export const BottomNav: React.FC<BottomNavProps> = ({
   activeTab,
@@ -14,18 +16,23 @@ export const BottomNav: React.FC<BottomNavProps> = ({
 }) => {
   const navItems: { id: AppTab; label: string; icon: React.ReactNode }[] = [
     {
+      id: 'home',
+      label: 'خانه',
+      icon: <Home className="w-5 h-5" />,
+    },
+    {
       id: 'counter',
-      label: 'شمارنده ذکر',
+      label: 'شمارنده',
       icon: <Disc className="w-5 h-5" />,
     },
     {
-      id: 'library',
-      label: 'کتابخانه ذکر',
-      icon: <BookOpen className="w-5 h-5" />,
+      id: 'notebook',
+      label: 'دفترچه',
+      icon: <NotebookPen className="w-5 h-5" />,
     },
     {
       id: 'history',
-      label: 'آمار و پشتیبان',
+      label: 'تاریخچه',
       icon: <BarChart2 className="w-5 h-5" />,
     },
     {
@@ -35,23 +42,26 @@ export const BottomNav: React.FC<BottomNavProps> = ({
     },
   ];
 
+  const isKnownTab = NAV_TABS.includes(activeTab);
+
   return (
     <nav
       aria-label="منوی اصلی برنامه"
-      className="w-full bg-[#091410]/95 backdrop-blur-md border-t border-[#1C352B] px-2 py-1.5 sticky bottom-0 z-30 select-none"
+      className="w-full bg-[var(--bg)]/95 backdrop-blur-md border-t border-[var(--border)] px-2 py-1.5 sticky bottom-0 z-30 select-none"
     >
-      <div className="max-w-md mx-auto grid grid-cols-4 gap-1">
+      <div className="max-w-md mx-auto grid grid-cols-5 gap-1">
         {navItems.map((item) => {
-          const isActive = activeTab === item.id;
+          const isActive = isKnownTab && activeTab === item.id;
           return (
             <button
               key={item.id}
               type="button"
+              data-tour={`nav-${item.id}`}
               onClick={() => onChangeTab(item.id)}
               className={`flex flex-col items-center justify-center py-2 px-1 rounded-2xl transition-all min-h-[52px] ${
                 isActive
-                  ? 'bg-[#162B23] text-[#D4AF37] font-bold shadow-sm'
-                  : 'text-[#94B2A3] hover:text-[#F3F7F4]'
+                  ? 'bg-[var(--surface-2)] text-[var(--accent)] font-bold shadow-sm'
+                  : 'text-[var(--muted)] hover:text-[var(--text)]'
               }`}
             >
               <div className="mb-0.5">{item.icon}</div>
