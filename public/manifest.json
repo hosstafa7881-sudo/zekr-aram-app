@@ -4,8 +4,8 @@
   "description": "شمارش دقیق ذکر. ذخیرهٔ همیشگی و کاملاً آفلاین.",
   "dir": "rtl",
   "lang": "fa-IR",
-  "start_url": "/",
-  "scope": "/",
+  "start_url": ".",
+  "scope": ".",
   "display": "standalone",
   "orientation": "portrait-primary",
   "background_color": "#F3F7EE",
@@ -13,7 +13,7 @@
   "categories": ["lifestyle", "utilities"],
   "icons": [
     {
-      "src": "/icon.svg",
+      "src": "icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"

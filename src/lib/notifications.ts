@@ -75,7 +75,7 @@ export function maybeFireDailyReminder(options: {
     try {
       new Notification('ذکرآرام', {
         body: REMINDER_MESSAGE,
-        icon: '/icon.svg',
+        icon: 'icon.svg',
       });
     } catch {
       // Ignore — some browsers disallow direct `new Notification` in certain contexts
