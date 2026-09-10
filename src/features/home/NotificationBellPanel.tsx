@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { X, Bell, CalendarHeart, Clock, Sparkles, Skull, PartyPopper } from 'lucide-react';
 import { UserSettings } from '../../lib/db';
 import { toPersianDigits, getShamsiDateInfo } from '../../utils/persian';
@@ -29,28 +29,54 @@ export const NotificationBellPanel: React.FC<NotificationBellPanelProps> = ({
   const [tab, setTab] = useState<PanelTab>('reminder');
   const [permission, setPermission] = useState(getNotificationPermission());
 
+  const [savedHour, savedMinute] = settings.reminderTime.split(':');
+  // Local, free-form text mirrors of the hour/minute fields. Keeping these
+  // separate from the padded "HH"/"MM" value stored in settings is the fix
+  // for the reported bug: previously the input's `value` was always the
+  // re-padded string derived straight from settings (e.g. typing "1" saved
+  // "01:00" and then forced the field back to "01"), which fights every
+  // keystroke and can make what the user typed appear to "change itself" or
+  // fail to register. Now the field shows exactly what was typed and is
+  // normalized (padded/clamped) only once, on blur.
+  const [hourText, setHourText] = useState(savedHour);
+  const [minuteText, setMinuteText] = useState(savedMinute);
+
+  // Re-sync the local free-typing fields from settings each time the panel
+  // opens (e.g. after a backup restore changed reminderTime while closed).
+  useEffect(() => {
+    if (isOpen) {
+      setHourText(savedHour);
+      setMinuteText(savedMinute);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const todayHijri = getHijriDateInfo();
   const todayShamsi = getShamsiDateInfo();
   const upcoming = getUpcomingOccasions(todayHijri);
 
-  const [reminderHour, reminderMinute] = settings.reminderTime.split(':');
-
-  const updateReminderHour = (value: string) => {
-    const h = Math.min(23, Math.max(0, parseInt(value, 10) || 0));
-    onUpdateSettings({
-      ...settings,
-      reminderTime: `${String(h).padStart(2, '0')}:${reminderMinute || '00'}`,
-    });
+  const handleHourChange = (raw: string) => {
+    const digitsOnly = raw.replace(/\D/g, '').slice(0, 2);
+    setHourText(digitsOnly);
   };
 
-  const updateReminderMinute = (value: string) => {
-    const m = Math.min(59, Math.max(0, parseInt(value, 10) || 0));
-    onUpdateSettings({
-      ...settings,
-      reminderTime: `${reminderHour || '00'}:${String(m).padStart(2, '0')}`,
-    });
+  const handleMinuteChange = (raw: string) => {
+    const digitsOnly = raw.replace(/\D/g, '').slice(0, 2);
+    setMinuteText(digitsOnly);
+  };
+
+  const commitHour = () => {
+    const h = String(Math.min(23, Math.max(0, parseInt(hourText, 10) || 0))).padStart(2, '0');
+    setHourText(h);
+    onUpdateSettings({ ...settings, reminderTime: `${h}:${minuteText || savedMinute}` });
+  };
+
+  const commitMinute = () => {
+    const m = String(Math.min(59, Math.max(0, parseInt(minuteText, 10) || 0))).padStart(2, '0');
+    setMinuteText(m);
+    onUpdateSettings({ ...settings, reminderTime: `${hourText || savedHour}:${m}` });
   };
 
   const handleToggleReminder = async () => {
@@ -138,26 +164,35 @@ export const NotificationBellPanel: React.FC<NotificationBellPanelProps> = ({
             {settings.reminderEnabled && (
               <div className="bg-[var(--bg)] border border-[var(--border)] rounded-2xl p-3.5">
                 <label className="block text-xs font-bold text-[var(--text)] mb-2">ساعت یادآوری:</label>
-                <div className="flex items-center justify-center gap-2">
-                  <input
-                    type="number"
-                    min={0}
-                    max={23}
-                    value={reminderHour}
-                    onChange={(e) => updateReminderHour(e.target.value)}
-                    className="w-20 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] rounded-xl px-2 py-2.5 text-center text-lg font-bold text-[var(--text)] outline-none tabular-nums-fa"
-                    aria-label="ساعت"
-                  />
-                  <span className="text-lg font-bold text-[var(--muted)]">:</span>
-                  <input
-                    type="number"
-                    min={0}
-                    max={59}
-                    value={reminderMinute}
-                    onChange={(e) => updateReminderMinute(e.target.value)}
-                    className="w-20 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] rounded-xl px-2 py-2.5 text-center text-lg font-bold text-[var(--text)] outline-none tabular-nums-fa"
-                    aria-label="دقیقه"
-                  />
+                {/* دقیقه first in markup so, under RTL, ساعت ends up on the left and دقیقه on the right. */}
+                <div className="flex items-end justify-center gap-2">
+                  <div className="flex flex-col items-center gap-1">
+                    <span className="text-[10px] font-bold text-[var(--muted)]">دقیقه</span>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      value={minuteText}
+                      onChange={(e) => handleMinuteChange(e.target.value)}
+                      onBlur={commitMinute}
+                      className="w-20 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] rounded-xl px-2 py-2.5 text-center text-lg font-bold text-[var(--text)] outline-none tabular-nums-fa"
+                      aria-label="دقیقه"
+                    />
+                  </div>
+                  <span className="text-lg font-bold text-[var(--muted)] pb-2.5">:</span>
+                  <div className="flex flex-col items-center gap-1">
+                    <span className="text-[10px] font-bold text-[var(--muted)]">ساعت</span>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      value={hourText}
+                      onChange={(e) => handleHourChange(e.target.value)}
+                      onBlur={commitHour}
+                      className="w-20 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] rounded-xl px-2 py-2.5 text-center text-lg font-bold text-[var(--text)] outline-none tabular-nums-fa"
+                      aria-label="ساعت"
+                    />
+                  </div>
                 </div>
                 <p className="text-[10px] text-[var(--muted)] text-center mt-1.5">ساعت (۰ تا ۲۳) و دقیقه (۰ تا ۵۹) را وارد کنید</p>
               </div>
@@ -168,10 +203,6 @@ export const NotificationBellPanel: React.FC<NotificationBellPanelProps> = ({
                 دسترسی اعلان در مرورگر شما مسدود شده است. برای فعال‌سازی، از تنظیمات مرورگر اجازهٔ اعلان را برای این سایت فعال کنید.
               </p>
             )}
-
-            <p className="text-[11px] text-[var(--muted)] leading-relaxed">
-              توجه: چون ذکرآرام یک وب‌اپلیکیشن است، یادآوری فقط زمانی کار می‌کند که برنامه باز یا اخیراً باز بوده باشد. برای اعلان‌های کاملاً مطمئن حتی وقتی برنامه بسته است، نسخهٔ اندرویدی آینده از قابلیت اعلان‌های محلی سیستم‌عامل استفاده خواهد کرد.
-            </p>
           </div>
         )}
 

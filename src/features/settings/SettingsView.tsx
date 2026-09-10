@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { UserSettings } from '../../lib/db';
 import { PALETTE_OPTIONS } from '../../lib/theme';
-import { LockedFeatureId, getFeatureLockState, getTrialDaysRemaining } from '../../lib/subscription';
-import { toPersianDigits } from '../../utils/persian';
+import { LockedFeatureId } from '../../lib/subscription';
+import { useTrialGate } from '../../lib/useTrialGate';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { HARD_RESET_CONFIRM_MESSAGE } from '../../lib/messages';
 import {
@@ -13,7 +13,6 @@ import {
   ShieldAlert,
   Moon,
   Palette,
-  Crown,
   Check,
 } from 'lucide-react';
 
@@ -22,7 +21,6 @@ interface SettingsViewProps {
   onUpdateSettings: (newSettings: UserSettings) => void;
   onHardResetAllData: () => void;
   guard: (featureId: LockedFeatureId, onAllowed: () => void, customLockedMessage?: string) => void;
-  onGoToPaywall: () => void;
 }
 
 export const SettingsView: React.FC<SettingsViewProps> = ({
@@ -30,11 +28,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   onUpdateSettings,
   onHardResetAllData,
   guard,
-  onGoToPaywall,
 }) => {
   const [confirmHardReset, setConfirmHardReset] = useState(false);
-  const lockState = getFeatureLockState(settings.isProUser);
-  const daysRemaining = getTrialDaysRemaining();
+  const trialGate = useTrialGate(settings.isProUser);
 
   const toggleBool = (key: keyof UserSettings) => {
     onUpdateSettings({
@@ -45,45 +41,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
   return (
     <div className="flex flex-col flex-1 w-full max-w-2xl mx-auto px-3 pt-2 pb-6 space-y-4">
-      {/* Subscription status card */}
-      <div className="bg-[var(--surface)] border border-[var(--accent)]/30 rounded-2xl p-4 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2.5">
-          <div className="w-10 h-10 rounded-2xl bg-[var(--accent)]/15 border border-[var(--accent)]/40 flex items-center justify-center text-[var(--accent)] shrink-0">
-            <Crown className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="text-xs font-bold text-[var(--text)]">
-              {settings.isProUser
-                ? 'مشترک ذکرآرام'
-                : lockState === 'locked'
-                ? 'دورهٔ آزمایشی رایگان تمام شد'
-                : 'دورهٔ آزمایشی رایگان'}
-            </div>
-            <div className="text-[11px] text-[var(--muted)] mt-0.5">
-              {settings.isProUser
-                ? 'همهٔ امکانات ویژه برای شما باز است'
-                : lockState === 'locked'
-                ? 'برای دسترسی به امکانات ویژه، اشتراک تهیه کنید'
-                : `${toPersianDigits(daysRemaining)} روز رایگان باقی مانده`}
-            </div>
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={onGoToPaywall}
-          className="shrink-0 px-3.5 py-2 rounded-xl bg-[var(--accent)] hover:bg-[var(--accent-light)] text-white text-xs font-bold"
-        >
-          مشاهده
-        </button>
-      </div>
-
       {/* Appearance: Day/Night mode + color palette */}
       <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-4 space-y-4">
         <div className="flex items-center justify-between border-b border-[var(--border)] pb-2">
           <h3 className="text-sm font-bold text-[var(--text)]">ظاهر و شخصی‌سازی</h3>
-          {!settings.isProUser && lockState !== 'locked' && (
+          {!settings.isProUser && !trialGate.isLocked && (
             <span className="text-[10px] font-bold text-[var(--accent)] bg-[var(--accent)]/10 px-2 py-0.5 rounded-md">
-              {toPersianDigits(daysRemaining)} روز مانده
+              {trialGate.freeDaysLabel}
             </span>
           )}
         </div>
@@ -315,7 +279,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 بازنشانی کامل و پاک کردن تمام داده‌ها
               </h4>
               <p className="text-xs text-[var(--muted)] mt-0.5 leading-relaxed">
-                این گزینه تمام شمارش‌ها، تاریخچه و ذکرهای شخصی را به حالت اولیه بازمی‌گرداند. قبل از انجام، پیشنهاد می‌کنیم از بخش «آمار و پشتیبان» فایل JSON تهیه کنید.
+                این گزینه تمام شمارش‌ها، تاریخچه و ذکرهای شخصی را به حالت اولیه بازمی‌گرداند. قبل از انجام، پیشنهاد می‌کنیم از بخش «آمار و پشتیبان» فایل پشتیبان تهیه کنید.
               </p>
             </div>
           </div>

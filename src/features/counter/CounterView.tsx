@@ -19,6 +19,8 @@ import { TasbihatStageBar, getTasbihatStageDetail } from './TasbihatStageBar';
 import { CustomStageBar } from './CustomStageBar';
 import { getCustomStageDetail } from './customStageHelpers';
 import { TargetConfigModal } from './TargetConfigModal';
+import { DiscountButtonsRow } from '../discounts/DiscountButtonsRow';
+import { ActiveDiscountCode } from '../../lib/discounts';
 import {
   Minus,
   Target,
@@ -39,6 +41,12 @@ interface CounterViewProps {
   onUpdateTarget: (newTarget: number, newMode: TargetMode) => void;
   onToggleSetting: (key: keyof UserSettings) => void;
   onOpenLibraryModal: () => void;
+  /** Star-earned celebration message, anchored above the counter box instead of the global top-of-screen toast (see App.tsx's useGamificationEvents wiring). */
+  starEarnedToast?: string | null;
+  onDismissStarEarnedToast?: () => void;
+  activeCountDiscount: ActiveDiscountCode | null;
+  onOpenCountDiscount: () => void;
+  onOpenReferralDiscount: () => void;
 }
 
 export const CounterView: React.FC<CounterViewProps> = ({
@@ -50,11 +58,24 @@ export const CounterView: React.FC<CounterViewProps> = ({
   onUpdateTarget,
   onToggleSetting,
   onOpenLibraryModal,
+  starEarnedToast,
+  onDismissStarEarnedToast,
+  activeCountDiscount,
+  onOpenCountDiscount,
+  onOpenReferralDiscount,
 }) => {
   const [isTargetModalOpen, setIsTargetModalOpen] = useState(false);
   const [tapRipple, setTapRipple] = useState<{ x: number; y: number; id: number } | null>(null);
   const [milestoneBanner, setMilestoneBanner] = useState<string | null>(null);
   const { showToast } = useToast();
+
+  // Auto-dismiss the locally-anchored star toast after the same duration the
+  // global toast used to use.
+  useEffect(() => {
+    if (!starEarnedToast) return;
+    const id = window.setTimeout(() => onDismissStarEarnedToast?.(), 4000);
+    return () => window.clearTimeout(id);
+  }, [starEarnedToast, onDismissStarEarnedToast]);
 
   const lifetimeTotal = computeLifetimeTotal(dailyLogs);
   const starCount = computeStarCount(lifetimeTotal);
@@ -192,7 +213,7 @@ export const CounterView: React.FC<CounterViewProps> = ({
   return (
     <div className="flex flex-col flex-1 w-full max-w-md mx-auto px-3 pt-2 pb-4 select-none">
       {/* Top utilities: Reset & Decrement, with visible text labels */}
-      <div className="flex items-center gap-1.5 mb-2.5">
+      <div className="flex items-center gap-1.5 mb-2">
         <HoldResetButton
           onResetConfirmed={onReset}
           disabled={activeDhikr.count === 0}
@@ -212,7 +233,7 @@ export const CounterView: React.FC<CounterViewProps> = ({
       </div>
 
       {/* Dhikr name (label only) + explicit Library button */}
-      <div className="flex items-center gap-2 mb-2.5">
+      <div className="flex items-center gap-2 mb-2">
         <div className="flex-1 bg-[var(--surface)] border border-[var(--accent)]/30 rounded-2xl px-3.5 py-2 text-right shadow-sm min-w-0">
           <div className="text-[11px] text-[var(--accent)] font-medium">ذکر انتخاب‌شده</div>
           <div className="text-sm font-bold text-[var(--text)] truncate">{activeDhikr.title}</div>
@@ -238,7 +259,7 @@ export const CounterView: React.FC<CounterViewProps> = ({
       )}
 
       {/* Sacred Dhikr Text & Translation Card */}
-      <div className="bg-[var(--surface)]/85 border border-[var(--border)] rounded-2xl p-3.5 mb-3 text-center shadow-inner">
+      <div className="bg-[var(--surface)]/85 border border-[var(--border)] rounded-2xl p-3.5 mb-2 text-center shadow-inner">
         <p
           className="text-lg sm:text-xl font-bold text-[var(--text)] leading-relaxed tracking-wide mb-1.5"
           dir="rtl"
@@ -249,7 +270,10 @@ export const CounterView: React.FC<CounterViewProps> = ({
             ? customStage.stageName
             : displayedArabicText}
         </p>
-        {activeDhikr.translation && (
+        {/* Multi-stage dhikrs (Tasbihat Zahra / custom) already show this same
+            breakdown in the colored stage bar above — repeating it here as a
+            translation paragraph is redundant and just adds extra scroll. */}
+        {activeDhikr.translation && !tasbihatStage && !customStage && (
           <p className="text-xs text-[var(--muted)] leading-relaxed line-clamp-2">
             {activeDhikr.translation}
           </p>
@@ -321,6 +345,14 @@ export const CounterView: React.FC<CounterViewProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Star-earned toast, anchored right above the counter box (not the top of the whole screen) */}
+      {starEarnedToast && (
+        <div className="flex items-center justify-center gap-2 bg-[var(--accent)] text-white text-xs font-bold px-4 py-2.5 rounded-2xl shadow-xl mb-2 animate-fade-in text-center">
+          <Star className="w-4 h-4 shrink-0" />
+          <span>{starEarnedToast}</span>
+        </div>
+      )}
 
       {/* MAIN TACTILE COUNTER ZONE (60% Lower Screen Thumb Target) */}
       <div
@@ -402,7 +434,7 @@ export const CounterView: React.FC<CounterViewProps> = ({
       </div>
 
       {/* Persistent star/badge section */}
-      <div className="mt-3 flex items-center gap-2 bg-[var(--surface)] border border-[var(--border)] rounded-2xl px-4 py-3">
+      <div className="mt-2 flex items-center gap-2 bg-[var(--surface)] border border-[var(--border)] rounded-2xl px-4 py-3">
         {hasAnyAchievement ? (
           <>
             <Star className="w-4 h-4 text-[var(--accent)] shrink-0" />
@@ -430,6 +462,14 @@ export const CounterView: React.FC<CounterViewProps> = ({
           <span className="text-xs text-[var(--muted)]">هنوز ستاره یا مدالی دریافت نکرده‌اید</span>
         )}
       </div>
+
+      {/* Discount entry points — بخش ث: right after the star/badge section, must stay above the fold on the counting page */}
+      <DiscountButtonsRow
+        activeCountDiscount={activeCountDiscount}
+        onOpenCountDiscount={onOpenCountDiscount}
+        onOpenReferralDiscount={onOpenReferralDiscount}
+        className="mt-2"
+      />
 
       {/* Target Configuration Modal */}
       <TargetConfigModal

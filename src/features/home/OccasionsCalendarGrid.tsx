@@ -3,15 +3,21 @@ import { toPersianDigits, getShamsiDateInfo } from '../../utils/persian';
 import { getJalaliMonthDays, shiftJalaliMonth } from '../../utils/jalali';
 import { getHijriDateInfo, formatHijriDate } from '../../utils/hijri';
 import { RELIGIOUS_OCCASIONS, ReligiousOccasion } from '../../data/religiousOccasions';
-import { ChevronRight, ChevronLeft, X, Sparkles, Skull, PartyPopper } from 'lucide-react';
+import { NATIONAL_HOLIDAYS, NationalHoliday } from '../../data/nationalHolidays';
+import { ChevronRight, ChevronLeft, X, Sparkles, Skull, PartyPopper, CalendarOff } from 'lucide-react';
 
 const WEEKDAY_HEADERS = ['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج'];
+const WEEKEND_HOLIDAY_REASON = 'تعطیل رسمی: آخر هفته';
 
 interface DayOccasionInfo {
   dateKey: string;
   jalaliDay: number;
+  weekdayIndex: number;
   hijriLabel: string;
   occasions: ReligiousOccasion[];
+  nationalHolidays: NationalHoliday[];
+  isWeekend: boolean;
+  isOfficialHoliday: boolean;
 }
 
 export const OccasionsCalendarGrid: React.FC = () => {
@@ -27,18 +33,29 @@ export const OccasionsCalendarGrid: React.FC = () => {
   const dayInfos: DayOccasionInfo[] = useMemo(
     () =>
       monthDays.map((day) => {
+        const shamsi = getShamsiDateInfo(day.gregorianDate);
         const hijri = getHijriDateInfo(day.gregorianDate);
         const occasions = RELIGIOUS_OCCASIONS.filter(
           (o) => o.hijriMonth === hijri.month && o.hijriDay === hijri.day
         );
+        const nationalHolidays = NATIONAL_HOLIDAYS.filter(
+          (h) => h.jalaliMonth === viewMonth && h.jalaliDay === day.jalaliDay
+        );
+        const isWeekend = shamsi.weekdayIndex === 6; // جمعه
+        const isOfficialHoliday =
+          isWeekend || nationalHolidays.length > 0 || occasions.some((o) => o.isOfficialHoliday);
         return {
           dateKey: day.dateKey,
           jalaliDay: day.jalaliDay,
+          weekdayIndex: shamsi.weekdayIndex,
           hijriLabel: formatHijriDate(hijri),
           occasions,
+          nationalHolidays,
+          isWeekend,
+          isOfficialHoliday,
         };
       }),
-    [monthDays]
+    [monthDays, viewMonth]
   );
 
   const goPrevMonth = () => {
@@ -91,14 +108,18 @@ export const OccasionsCalendarGrid: React.FC = () => {
         {dayInfos.map((day) => {
           const isToday = day.dateKey === todayInfo.dateKey;
           const hasOccasion = day.occasions.length > 0;
+          const isClickable = hasOccasion || day.isOfficialHoliday;
 
           return (
             <button
               key={day.dateKey}
               type="button"
-              onClick={() => (hasOccasion ? setSelected(day) : undefined)}
+              disabled={!isClickable}
+              onClick={() => (isClickable ? setSelected(day) : undefined)}
               className={`relative aspect-square flex items-center justify-center rounded-xl text-xs font-bold tabular-nums-fa transition-all ${
-                hasOccasion
+                day.isOfficialHoliday
+                  ? 'bg-[var(--danger)]/12 text-[var(--danger)] border border-[var(--danger)]/45'
+                  : hasOccasion
                   ? 'bg-[var(--accent)]/15 text-[var(--accent)] border border-[var(--accent)]/50'
                   : isToday
                   ? 'bg-[var(--surface-2)] text-[var(--text)] border border-[var(--border)]'
@@ -106,12 +127,27 @@ export const OccasionsCalendarGrid: React.FC = () => {
               }`}
             >
               {toPersianDigits(day.jalaliDay)}
-              {hasOccasion && (
-                <span className="absolute bottom-1 w-1 h-1 rounded-full bg-[var(--accent)]" />
+              {isClickable && (
+                <span
+                  className={`absolute bottom-1 w-1 h-1 rounded-full ${
+                    day.isOfficialHoliday ? 'bg-[var(--danger)]' : 'bg-[var(--accent)]'
+                  }`}
+                />
               )}
             </button>
           );
         })}
+      </div>
+
+      <div className="flex items-center gap-3 text-[10px] text-[var(--muted)] pt-1">
+        <span className="flex items-center gap-1">
+          <span className="w-2.5 h-2.5 rounded-full bg-[var(--danger)]/40 border border-[var(--danger)]/60" />
+          تعطیل رسمی
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="w-2.5 h-2.5 rounded-full bg-[var(--accent)]/40 border border-[var(--accent)]/60" />
+          مناسبت (غیر تعطیل)
+        </span>
       </div>
 
       {selected && (
@@ -129,8 +165,27 @@ export const OccasionsCalendarGrid: React.FC = () => {
               {toPersianDigits(selected.jalaliDay)} {monthName} — {selected.hijriLabel}
             </div>
             <div className="space-y-2">
+              {selected.nationalHolidays.map((h) => (
+                <div key={h.id} className="flex items-start gap-2.5 p-3 rounded-xl bg-[var(--danger)]/10 border border-[var(--danger)]/30">
+                  <CalendarOff className="w-4 h-4 text-[var(--danger)] shrink-0 mt-0.5" />
+                  <span className="text-xs font-bold text-[var(--text)] leading-relaxed">تعطیل رسمی: {h.title}</span>
+                </div>
+              ))}
+              {selected.isWeekend && (
+                <div className="flex items-start gap-2.5 p-3 rounded-xl bg-[var(--danger)]/10 border border-[var(--danger)]/30">
+                  <CalendarOff className="w-4 h-4 text-[var(--danger)] shrink-0 mt-0.5" />
+                  <span className="text-xs font-bold text-[var(--text)] leading-relaxed">{WEEKEND_HOLIDAY_REASON}</span>
+                </div>
+              )}
               {selected.occasions.map((occ) => (
-                <div key={occ.id} className="flex items-start gap-2.5 p-3 rounded-xl bg-[var(--bg)] border border-[var(--border)]">
+                <div
+                  key={occ.id}
+                  className={`flex items-start gap-2.5 p-3 rounded-xl border ${
+                    occ.isOfficialHoliday
+                      ? 'bg-[var(--danger)]/10 border-[var(--danger)]/30'
+                      : 'bg-[var(--bg)] border-[var(--border)]'
+                  }`}
+                >
                   <div className="shrink-0 mt-0.5">
                     {occ.type === 'birth' ? (
                       <Sparkles className="w-4 h-4 text-[var(--success)]" />
@@ -140,7 +195,9 @@ export const OccasionsCalendarGrid: React.FC = () => {
                       <PartyPopper className="w-4 h-4 text-[var(--accent)]" />
                     )}
                   </div>
-                  <span className="text-xs font-bold text-[var(--text)] leading-relaxed">{occ.title}</span>
+                  <span className="text-xs font-bold text-[var(--text)] leading-relaxed">
+                    {occ.isOfficialHoliday ? `تعطیل رسمی: ${occ.title}` : occ.title}
+                  </span>
                 </div>
               ))}
             </div>

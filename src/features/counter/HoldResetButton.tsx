@@ -61,7 +61,7 @@ export const HoldResetButton: React.FC<HoldResetButtonProps> = ({
   }, []);
 
   return (
-    <div className="relative flex items-center gap-2 flex-1">
+    <div className="relative flex flex-col items-center gap-1 flex-1">
       <button
         type="button"
         onPointerDown={startHold}
@@ -69,9 +69,9 @@ export const HoldResetButton: React.FC<HoldResetButtonProps> = ({
         onPointerLeave={cancelHold}
         onPointerCancel={cancelHold}
         disabled={disabled}
-        title="برای صفر کردن، دکمه را نگه دارید"
-        aria-label="صفر کردن شمارنده با نگه‌داشتن"
-        className={`relative overflow-hidden flex-1 flex items-center justify-center gap-1.5 h-11 px-3.5 rounded-2xl border transition-all select-none no-touch-callout ${
+        title="برای صفر کردن شمارش، دکمه را چند ثانیه نگه دارید"
+        aria-label="صفر کردن شمارش با نگه‌داشتن"
+        className={`relative overflow-hidden w-full flex items-center justify-center gap-1.5 h-11 px-3.5 rounded-2xl border transition-all select-none no-touch-callout ${
           disabled
             ? 'opacity-30 border-[var(--border)] text-[var(--muted)] cursor-not-allowed'
             : holding
@@ -86,14 +86,18 @@ export const HoldResetButton: React.FC<HoldResetButtonProps> = ({
           />
         )}
         <RotateCcw className="w-4 h-4 shrink-0" />
-        <span className="text-xs font-bold whitespace-nowrap">بازنشانی</span>
+        <span className="text-xs font-bold whitespace-nowrap">صفر کردن شمارش</span>
       </button>
 
-      {holding && (
-        <span className="absolute -top-8 right-0 text-xs font-medium text-[var(--danger)] bg-[var(--bg)]/95 px-2.5 py-1 rounded-lg border border-[var(--danger)]/40 animate-pulse whitespace-nowrap">
-          نگه دارید ({Math.ceil(((100 - progress) / 100) * 1.4)} ثانیه)...
-        </span>
-      )}
+      <span
+        className={`text-[10px] text-center leading-tight ${
+          holding ? 'text-[var(--danger)] font-bold animate-pulse' : 'text-[var(--muted)]'
+        }`}
+      >
+        {holding
+          ? `نگه دارید (${Math.ceil(((100 - progress) / 100) * 1.4)} ثانیه)...`
+          : 'برای صفر کردن شمارش، دکمه را چند ثانیه نگه دارید.'}
+      </span>
     </div>
   );
 };

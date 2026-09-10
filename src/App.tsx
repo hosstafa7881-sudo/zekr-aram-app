@@ -19,7 +19,7 @@ import { setScreenWakeLock } from './lib/haptics';
 import { applyTheme } from './lib/theme';
 import { getFeatureLockState } from './lib/subscription';
 import { getShamsiDateInfo } from './utils/persian';
-import { ToastProvider } from './components/ToastProvider';
+import { ToastProvider, useToast } from './components/ToastProvider';
 import { FeatureGateProvider, useFeatureGate } from './lib/FeatureGateContext';
 import { OnboardingTour } from './components/OnboardingTour';
 import { useGamificationEvents } from './lib/useGamificationEvents';
@@ -46,6 +46,12 @@ import { SettingsView } from './features/settings/SettingsView';
 import { HomeView } from './features/home/HomeView';
 import { NotebookView } from './features/notebook/NotebookView';
 import { PaywallView } from './features/subscription/PaywallView';
+import { useCountDiscountEvents } from './lib/useCountDiscountEvents';
+import { useReferralDiscount } from './lib/useReferralDiscount';
+import { consumeActiveCountDiscountCode } from './lib/discounts';
+import { CountDiscountModal } from './features/discounts/CountDiscountModal';
+import { ReferralDiscountModal } from './features/discounts/ReferralDiscountModal';
+import { DiscountEarnedModal } from './features/discounts/DiscountEarnedModal';
 
 export function App() {
   const [dhikrs, setDhikrs] = useState<DhikrItem[]>(() => loadDhikrs());
@@ -108,6 +114,24 @@ export function App() {
       setSettings((prev) => ({ ...prev, themeMode: 'day', colorPalette: 'green' }));
     }
   }, [settings.isProUser, settings.themeMode, settings.colorPalette]);
+
+  // A referral-granted temporary Pro access (بخش ت) expires on its own,
+  // exactly like the free trial — this is the "timer" side of that grant;
+  // isProUser flips back to false once proGrantExpiresAt has passed. A real
+  // (or simulated) purchase via PaywallView clears proGrantExpiresAt instead,
+  // making the Pro flag permanent.
+  useEffect(() => {
+    if (!settings.proGrantExpiresAt) return;
+    const checkExpiry = () => {
+      setSettings((prev) => {
+        if (!prev.proGrantExpiresAt || Date.now() < prev.proGrantExpiresAt) return prev;
+        return { ...prev, isProUser: false, proGrantExpiresAt: null };
+      });
+    };
+    checkExpiry();
+    const intervalId = window.setInterval(checkExpiry, 60_000);
+    return () => window.clearInterval(intervalId);
+  }, [settings.proGrantExpiresAt]);
 
   const activeDhikr =
     dhikrs.find((d) => d.id === activeDhikrId) || dhikrs[0] || INITIAL_DHIKR_LIST[0];
@@ -423,12 +447,22 @@ interface MainShellProps {
 
 function MainShell(props: MainShellProps) {
   const { guard } = useFeatureGate();
+  const { showToast } = useToast();
 
-  const { currentCelebration, dismissCelebration } = useGamificationEvents(
-    props.dailyLogs,
-    props.todayDateKey
-  );
+  const { currentCelebration, dismissCelebration, starEarnedToast, dismissStarEarnedToast } =
+    useGamificationEvents(props.dailyLogs, props.todayDateKey);
   useOccasionNotice(props.todayDateKey);
+
+  // The star-earned toast is shown anchored above the counter box while the
+  // user is actually on the counting page (see CounterView) — everywhere
+  // else there's no counter box to anchor to, so it falls back to the
+  // normal top-of-screen toast.
+  useEffect(() => {
+    if (!starEarnedToast) return;
+    if (props.activeTab === 'counter') return;
+    showToast(starEarnedToast, { kind: 'celebration', durationMs: 4000 });
+    dismissStarEarnedToast();
+  }, [starEarnedToast, props.activeTab, showToast]);
 
   const todayHasAnyDhikr =
     (props.dailyLogs.find((l) => l.dateKey === props.todayDateKey)?.totalCount || 0) > 0;
@@ -438,6 +472,33 @@ function MainShell(props: MainShellProps) {
     todayDateKey: props.todayDateKey,
     todayHasAnyDhikr,
   });
+
+  // Two independent discount systems (بخش پ و ت) — see src/lib/discounts.ts.
+  const countDiscount = useCountDiscountEvents(props.dailyLogs);
+  const referralDiscount = useReferralDiscount();
+  const [isCountDiscountModalOpen, setIsCountDiscountModalOpen] = useState(false);
+  const [isReferralModalOpen, setIsReferralModalOpen] = useState(false);
+
+  const goToPaywallFromDiscount = () => {
+    setIsCountDiscountModalOpen(false);
+    countDiscount.dismissEarnedCelebration();
+    props.setActiveTab('subscription');
+  };
+
+  const handleConsumeCountDiscount = () => {
+    consumeActiveCountDiscountCode();
+    countDiscount.refreshActiveCode();
+  };
+
+  const handleClaimReferral = () => {
+    const result = referralDiscount.claim();
+    props.onUpdateSettings({
+      ...props.settings,
+      isProUser: true,
+      proGrantExpiresAt: result.proGrantExpiresAt,
+    });
+    return result;
+  };
 
   // The Notebook tab is paywall-gated — route bottom-nav taps through the
   // gate too (not just the Home page's quick-access card).
@@ -462,6 +523,9 @@ function MainShell(props: MainShellProps) {
             onGoToCounter={() => props.setActiveTab('counter')}
             onGoToLibrary={() => props.setActiveTab('library')}
             onGoToPaywall={() => props.setActiveTab('subscription')}
+            activeCountDiscount={countDiscount.activeCode}
+            onOpenCountDiscount={() => setIsCountDiscountModalOpen(true)}
+            onOpenReferralDiscount={() => setIsReferralModalOpen(true)}
           />
         )}
 
@@ -475,6 +539,11 @@ function MainShell(props: MainShellProps) {
             onUpdateTarget={props.onUpdateTarget}
             onToggleSetting={props.onToggleSetting}
             onOpenLibraryModal={() => props.setActiveTab('library')}
+            starEarnedToast={starEarnedToast}
+            onDismissStarEarnedToast={dismissStarEarnedToast}
+            activeCountDiscount={countDiscount.activeCode}
+            onOpenCountDiscount={() => setIsCountDiscountModalOpen(true)}
+            onOpenReferralDiscount={() => setIsReferralModalOpen(true)}
           />
         )}
 
@@ -482,6 +551,7 @@ function MainShell(props: MainShellProps) {
           <DhikrLibraryView
             dhikrs={props.dhikrs}
             activeDhikrId={props.activeDhikr.id}
+            isProUser={props.settings.isProUser}
             onSelectDhikr={props.onSelectDhikr}
             onAddCustomDhikr={props.onAddCustomDhikr}
             onEditDhikr={props.onEditDhikr}
@@ -524,12 +594,16 @@ function MainShell(props: MainShellProps) {
             onUpdateSettings={props.onUpdateSettings}
             onHardResetAllData={props.onHardResetAllData}
             guard={guard}
-            onGoToPaywall={() => props.setActiveTab('subscription')}
           />
         )}
 
         {props.activeTab === 'subscription' && (
-          <PaywallView settings={props.settings} onUpdateSettings={props.onUpdateSettings} />
+          <PaywallView
+            settings={props.settings}
+            onUpdateSettings={props.onUpdateSettings}
+            activeDiscountCode={countDiscount.activeCode}
+            onDiscountApplied={handleConsumeCountDiscount}
+          />
         )}
       </main>
 
@@ -544,6 +618,32 @@ function MainShell(props: MainShellProps) {
           onClose={dismissCelebration}
         />
       )}
+
+      {countDiscount.justEarnedTier && countDiscount.activeCode && (
+        <DiscountEarnedModal
+          isOpen
+          activeCode={countDiscount.activeCode}
+          onGoToPaywall={goToPaywallFromDiscount}
+          onDismiss={countDiscount.dismissEarnedCelebration}
+        />
+      )}
+
+      <CountDiscountModal
+        isOpen={isCountDiscountModalOpen}
+        onClose={() => setIsCountDiscountModalOpen(false)}
+        activeCode={countDiscount.activeCode}
+        cycleCount={countDiscount.cycleCount}
+        cycleDaysLeft={countDiscount.cycleDaysLeft}
+        onGoToPaywall={goToPaywallFromDiscount}
+      />
+
+      <ReferralDiscountModal
+        isOpen={isReferralModalOpen}
+        onClose={() => setIsReferralModalOpen(false)}
+        eligible={referralDiscount.eligible}
+        nextEligibleDate={referralDiscount.nextEligibleDate}
+        onClaim={handleClaimReferral}
+      />
 
       <OnboardingTour isActive={!props.settings.onboardingSeen} onFinish={props.onFinishOnboarding} />
     </div>

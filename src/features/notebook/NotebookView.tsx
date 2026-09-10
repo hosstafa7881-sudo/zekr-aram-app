@@ -3,7 +3,7 @@ import { NotebookItemDef, NotebookDayEntry, FEELING_STICKERS } from './notebookT
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { useToast } from '../../components/ToastProvider';
 import { getTrialDaysRemaining } from '../../lib/subscription';
-import { toPersianDigits } from '../../utils/persian';
+import { formatFreeDaysLabel } from '../../lib/useTrialGate';
 import { NOTEBOOK_TRIAL_BANNER } from '../../lib/messages';
 import { Plus, Trash2, Check, Smile, ClipboardCheck } from 'lucide-react';
 
@@ -57,7 +57,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({
 
       {!isProUser && (
         <div className="bg-[var(--accent)]/10 border border-[var(--accent)]/30 rounded-2xl px-4 py-2.5 text-xs font-bold text-[var(--text)] text-center">
-          {NOTEBOOK_TRIAL_BANNER(toPersianDigits(getTrialDaysRemaining()))}
+          {NOTEBOOK_TRIAL_BANNER(formatFreeDaysLabel(getTrialDaysRemaining()))}
         </div>
       )}
 

@@ -4,6 +4,7 @@ import { toPersianDigits, getShamsiDateInfo } from '../../utils/persian';
 import { canAddCustomDhikr, CUSTOM_DHIKR_LIMIT_MESSAGE, CUSTOM_DHIKR_DELETE_CONFIRM_MESSAGE } from '../../lib/dhikrLimits';
 import { LOCKED_DHIKR_IDS, LockedFeatureId } from '../../lib/subscription';
 import { MULTISTAGE_DHIKR_LOCKED_MESSAGE } from '../../lib/messages';
+import { useTrialGate } from '../../lib/useTrialGate';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import {
   Plus,
@@ -13,6 +14,7 @@ import {
   Sparkles,
   BookOpen,
   Calendar,
+  Clock,
   X,
   Lock,
   Layers,
@@ -21,6 +23,7 @@ import {
 interface DhikrLibraryViewProps {
   dhikrs: DhikrItem[];
   activeDhikrId: string;
+  isProUser: boolean;
   onSelectDhikr: (id: string) => void;
   onAddCustomDhikr: (newItem: Omit<DhikrItem, 'id' | 'count' | 'totalAllTime' | 'updatedAt'>) => void;
   onEditDhikr: (updated: DhikrItem) => void;
@@ -31,12 +34,14 @@ interface DhikrLibraryViewProps {
 export const DhikrLibraryView: React.FC<DhikrLibraryViewProps> = ({
   dhikrs,
   activeDhikrId,
+  isProUser,
   onSelectDhikr,
   onAddCustomDhikr,
   onEditDhikr,
   onDeleteDhikr,
   guard,
 }) => {
+  const trialGate = useTrialGate(isProUser);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<DhikrItem | null>(null);
@@ -209,10 +214,7 @@ export const DhikrLibraryView: React.FC<DhikrLibraryViewProps> = ({
       {/* Header & Add New Dhikr CTA */}
       <div className="flex items-center justify-between mb-3">
         <div>
-          <h2 className="text-lg font-bold text-[var(--text)]">کتابخانهٔ ذکر و ادعیه</h2>
-          <p className="text-xs text-[var(--muted)]">
-            ذکرهای ایام هفته، تسبیحات حضرت زهرا و ذکرهای شخصی شما
-          </p>
+          <h2 className="text-lg font-bold text-[var(--text)]">کتابخانهٔ ذکر و تسبیح</h2>
         </div>
 
         <button
@@ -301,10 +303,17 @@ export const DhikrLibraryView: React.FC<DhikrLibraryViewProps> = ({
                       </span>
                     )}
                     {(lockedFeatureId || isCustomMultiStage) && (
-                      <span className="inline-flex items-center gap-1 bg-[var(--muted)]/15 text-[var(--muted)] text-[10px] font-bold px-2 py-0.5 rounded-md border border-[var(--border)]">
-                        <Lock className="w-3 h-3" />
-                        ویژه مشترکین
-                      </span>
+                      trialGate.isLocked ? (
+                        <span className="inline-flex items-center gap-1 bg-[var(--muted)]/15 text-[var(--muted)] text-[10px] font-bold px-2 py-0.5 rounded-md border border-[var(--border)]">
+                          <Lock className="w-3 h-3" />
+                          ویژه مشترکین
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 bg-[var(--accent)]/15 text-[var(--accent)] text-[10px] font-bold px-2 py-0.5 rounded-md border border-[var(--accent)]/30">
+                          <Clock className="w-3 h-3" />
+                          {trialGate.freeDaysLabel}
+                        </span>
+                      )
                     )}
                   </div>
 
