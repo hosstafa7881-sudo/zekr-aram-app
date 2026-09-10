@@ -15,6 +15,21 @@ function getAudioContext(): AudioContext | null {
   return audioCtx;
 }
 
+// Per-tap taps pass a tiny base pattern (e.g. 12ms) that, once scaled by the
+// old flat 0.6/1/1.5 factors, produced durations (7-18ms) below what most
+// phones' eccentric-rotating-mass vibration motors can actually spin up and
+// render as a felt pulse (~15-20ms minimum in practice) — this is why the
+// "vibration while counting" switch felt like it "did nothing" even when on,
+// and why the light/medium/strong choice made no perceptible difference.
+// Each intensity now gets its own realistic minimum floor for single-pulse
+// (per-bead) taps specifically, so all three levels are both felt and
+// distinguishable on real hardware.
+const TAP_INTENSITY_PROFILE: Record<'light' | 'medium' | 'strong', { scale: number; min: number }> = {
+  light: { scale: 1, min: 15 },
+  medium: { scale: 1.6, min: 22 },
+  strong: { scale: 2.4, min: 35 },
+};
+
 export function triggerVibration(
   pattern: number | number[],
   enabled = true,
@@ -23,10 +38,22 @@ export function triggerVibration(
   if (!enabled || typeof navigator === 'undefined' || !navigator.vibrate) return;
 
   try {
-    const scale = intensity === 'light' ? 0.6 : intensity === 'strong' ? 1.5 : 1;
+    // Some Android WebViews/Chrome versions silently drop a new vibrate()
+    // call while a previous one from a rapid tap is still considered
+    // "in flight" — cancelling first (vibrate(0)) before firing the next
+    // pattern is the standard workaround so each tap reliably re-triggers
+    // the motor even during fast, repeated tasbih taps.
+    navigator.vibrate(0);
+
     if (typeof pattern === 'number') {
-      navigator.vibrate(Math.max(8, Math.round(pattern * scale)));
+      const profile = TAP_INTENSITY_PROFILE[intensity];
+      navigator.vibrate(Math.max(profile.min, Math.round(pattern * profile.scale)));
     } else {
+      // Longer, fixed-feel milestone/celebration patterns (stage/target
+      // reached) — these already use perceptible absolute durations and
+      // always pass a hardcoded intensity, so they keep the original
+      // gentler scale rather than the tap-specific floors above.
+      const scale = intensity === 'light' ? 0.6 : intensity === 'strong' ? 1.5 : 1;
       navigator.vibrate(pattern.map((v, i) => (i % 2 === 0 ? Math.max(10, Math.round(v * scale)) : v)));
     }
   } catch {

@@ -75,8 +75,8 @@ export function markWarningShownToday(dateKey: string) {
   }
 }
 
-export const TRIAL_WARNING_MESSAGE = (daysLeftLabel: string) =>
-  `این امکان تا ${daysLeftLabel} روز دیگه به‌صورت رایگان در دسترسه. تا وقت داری، ازش لذت ببر! 🌿`;
+export const TRIAL_WARNING_MESSAGE = (freeDaysLabel: string) =>
+  `این امکان ${freeDaysLabel}. تا وقت داری، ازش لذت ببر! 🌿`;
 
 export const TRIAL_ENDED_MESSAGE =
   'مدت ۳۰ روزه‌ی استفاده‌ی رایگان از این امکان تموم شده. با تهیه‌ی اشتراک ماهانه می‌تونی به استفاده از این قسمت ادامه بدی.';

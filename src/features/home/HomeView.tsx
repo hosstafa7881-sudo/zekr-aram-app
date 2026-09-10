@@ -8,6 +8,8 @@ import { NotificationBellPanel } from './NotificationBellPanel';
 import { SupportUsModal } from './SupportUsModal';
 import { useToast } from '../../components/ToastProvider';
 import { APP_SHARE_MESSAGE } from '../../lib/messages';
+import { DiscountButtonsRow } from '../discounts/DiscountButtonsRow';
+import { ActiveDiscountCode } from '../../lib/discounts';
 import { Bell, Play, Share2, HeartHandshake, BookOpen, Star } from 'lucide-react';
 
 interface HomeViewProps {
@@ -17,6 +19,9 @@ interface HomeViewProps {
   onGoToCounter: () => void;
   onGoToLibrary: () => void;
   onGoToPaywall: () => void;
+  activeCountDiscount: ActiveDiscountCode | null;
+  onOpenCountDiscount: () => void;
+  onOpenReferralDiscount: () => void;
 }
 
 export const HomeView: React.FC<HomeViewProps> = ({
@@ -26,6 +31,9 @@ export const HomeView: React.FC<HomeViewProps> = ({
   onGoToCounter,
   onGoToLibrary,
   onGoToPaywall,
+  activeCountDiscount,
+  onOpenCountDiscount,
+  onOpenReferralDiscount,
 }) => {
   const [isBellOpen, setIsBellOpen] = useState(false);
   const [isSupportOpen, setIsSupportOpen] = useState(false);
@@ -106,21 +114,28 @@ export const HomeView: React.FC<HomeViewProps> = ({
             {hasStartedToday ? 'ادامه ذکر' : 'شروع ذکر'}
           </button>
         </div>
-
-        {hasAnyAchievement && (
-          <div className="flex items-center gap-2 mt-4 pt-4 border-t border-[var(--border)]">
-            <Star className="w-4 h-4 text-[var(--accent)]" />
-            <span className="text-xs font-bold text-[var(--text)]">{starLabel}</span>
-            <div className="flex items-center gap-1 mr-auto">
-              {BADGE_LEVELS.filter((b) => earnedBadges.includes(b.id)).map((b) => (
-                <span key={b.id} className="text-base" title={b.label}>
-                  {b.emoji}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
+
+      {/* Discount entry points — بخش ث: after the main "today's total" card, before the star/badge section */}
+      <DiscountButtonsRow
+        activeCountDiscount={activeCountDiscount}
+        onOpenCountDiscount={onOpenCountDiscount}
+        onOpenReferralDiscount={onOpenReferralDiscount}
+      />
+
+      {hasAnyAchievement && (
+        <div className="flex items-center gap-2 bg-[var(--surface)] border border-[var(--border)] rounded-2xl px-4 py-3">
+          <Star className="w-4 h-4 text-[var(--accent)]" />
+          <span className="text-xs font-bold text-[var(--text)]">{starLabel}</span>
+          <div className="flex items-center gap-1 mr-auto">
+            {BADGE_LEVELS.filter((b) => earnedBadges.includes(b.id)).map((b) => (
+              <span key={b.id} className="text-base" title={b.label}>
+                {b.emoji}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Library quick access */}
       <button

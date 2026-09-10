@@ -53,12 +53,15 @@ export const SUPPORT_US_MESSAGE =
   'اگه از برنامه خوشتون اومد، با دادن یک نظر خوب توی فروشگاه، مارو حمایت کنین 🌿';
 
 // 23. Paywall page banner for a user still inside the free trial — dynamic days-left.
-export const PAYWALL_TRIAL_BANNER = (daysLeftLabel: string) =>
-  `به مدت ۳۰ روز، همه‌ی امکانات این برنامه برای شما رایگانه 🌿 ${daysLeftLabel} روز دیگر باقی مانده. بعدش، بعضی از امکانات قفل می‌شن و برای ادامه‌ی استفاده نیاز به تهیه‌ی اشتراک ماهانه دارین.`;
+// `freeDaysLabel` is the one canonical wording from useTrialGate's formatFreeDaysLabel
+// ("۳۰ روز رایگانه" on day one, "[عدد] روز دیگه رایگانه" afterwards) — used everywhere
+// in the app without exception, so this banner never re-derives its own phrasing.
+export const PAYWALL_TRIAL_BANNER = (freeDaysLabel: string) =>
+  `به مدت ۳۰ روز، همه‌ی امکانات این برنامه برای شما رایگانه 🌿 ${freeDaysLabel}. بعدش، بعضی از امکانات قفل می‌شن و برای ادامه‌ی استفاده نیاز به تهیه‌ی اشتراک ماهانه دارین.`;
 
 // 24. Notebook free-trial banner (shown on every visit for the whole 30 days, not just the last 5)
-export const NOTEBOOK_TRIAL_BANNER = (daysLeftLabel: string) =>
-  `این امکان تا ${daysLeftLabel} روز دیگه رایگانه. تا وقت داری، ازش لذت ببر! 🌿`;
+export const NOTEBOOK_TRIAL_BANNER = (freeDaysLabel: string) =>
+  `این امکان ${freeDaysLabel}. تا وقت داری، ازش لذت ببر! 🌿`;
 
 // Hard-reset confirmation (Settings) — explicit wording requested after the message audit.
 export const HARD_RESET_CONFIRM_MESSAGE =

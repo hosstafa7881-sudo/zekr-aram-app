@@ -50,31 +50,32 @@
   --danger: hsl(0 74% 48%);
 }
 
-/* Background palette — 6 soft, light tints, matched to the reference
-   screenshot. Never touches --brand-* (the fixed accent green). */
+/* Background palette — 6 soft tints, matched to the reference screenshot,
+   nudged a bit more vivid per user feedback after real-device testing.
+   Never touches --brand-* (the fixed accent green). */
 [data-palette='green'] {
   --hue: 100;
-  --pal-sat: 32%;
+  --pal-sat: 40%;
 }
 [data-palette='cream'] {
   --hue: 46;
-  --pal-sat: 55%;
+  --pal-sat: 63%;
 }
 [data-palette='gray'] {
   --hue: 250;
-  --pal-sat: 6%;
+  --pal-sat: 14%;
 }
 [data-palette='lilac'] {
   --hue: 263;
-  --pal-sat: 40%;
+  --pal-sat: 48%;
 }
 [data-palette='blue'] {
   --hue: 200;
-  --pal-sat: 48%;
+  --pal-sat: 56%;
 }
 [data-palette='pink'] {
   --hue: 344;
-  --pal-sat: 50%;
+  --pal-sat: 58%;
 }
 
 @layer base {
@@ -141,9 +142,19 @@
 }
 
 /* CSS-only onboarding spotlight (avoids canvas/clip-path issues on some
-   Android GPUs, e.g. Xiaomi devices rendering a blank white square). */
+   Android GPUs, e.g. Xiaomi devices rendering a blank white square).
+   MUST NOT declare `position` here: this class loads after Tailwind's
+   utilities (via @import at the top of this file), so a `position:
+   relative` here would win the cascade over the `absolute` utility class
+   applied in JSX (equal specificity, later rule wins) — that exact bug
+   silently turned every tour step's spotlight into a `position: relative`
+   box, whose horizontal static position in this app's RTL layout anchors
+   to the right edge instead of the intended viewport-absolute coordinates,
+   throwing the highlight badly off horizontally on every single step while
+   top/width/height (which don't depend on horizontal static position)
+   looked correct. Position is fully controlled by the `absolute` utility
+   in OnboardingTour.tsx. */
 .onboarding-spotlight {
-  position: relative;
   z-index: 60;
   border-radius: 1rem;
   box-shadow: 0 0 0 4px var(--accent), 0 0 0 9999px rgba(0, 0, 0, 0.72);

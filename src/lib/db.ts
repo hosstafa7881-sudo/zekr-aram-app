@@ -21,6 +21,8 @@ export interface UserSettings {
   reminderEnabled: boolean;
   reminderTime: string;
   isProUser: boolean;
+  /** Timestamp until which a temporary discount-granted Pro access lasts (referral discount). Null when there's no active temporary grant (a real/simulated purchase leaves this null and isProUser permanently true). */
+  proGrantExpiresAt: number | null;
 }
 
 export interface BackupPayload {
@@ -54,6 +56,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   reminderEnabled: false,
   reminderTime: '20:00',
   isProUser: false,
+  proGrantExpiresAt: null,
 };
 
 // IndexedDB helper for background durability

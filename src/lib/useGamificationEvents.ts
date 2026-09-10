@@ -26,10 +26,16 @@ export interface PendingCelebration {
 /**
  * Watches daily logs and fires star/badge/streak/record-break celebrations
  * exactly once each, persisted so reloads don't re-trigger old milestones.
+ *
+ * The star-earned toast is NOT shown through the global top-of-screen toast
+ * here — it's returned as `starEarnedToast` so the caller can render it
+ * anchored above the counter box while the user is on the counting page
+ * (where it's actually earned), falling back to the normal toast elsewhere.
  */
 export function useGamificationEvents(dailyLogs: DailyLog[], todayDateKey: string) {
   const { showToast } = useToast();
   const [celebrationQueue, setCelebrationQueue] = useState<PendingCelebration[]>([]);
+  const [starEarnedToast, setStarEarnedToast] = useState<string | null>(null);
   const stateRef = useRef(loadGamificationState());
 
   useEffect(() => {
@@ -47,10 +53,7 @@ export function useGamificationEvents(dailyLogs: DailyLog[], todayDateKey: strin
     const newCelebrations: PendingCelebration[] = [];
 
     if (starCount > state.lastSeenStarCount) {
-      showToast(STAR_EARNED_MESSAGE(toPersianDigits(starCount)), {
-        kind: 'celebration',
-        durationMs: 4000,
-      });
+      setStarEarnedToast(STAR_EARNED_MESSAGE(toPersianDigits(starCount)));
       nextState.lastSeenStarCount = starCount;
       changed = true;
     }
@@ -91,6 +94,7 @@ export function useGamificationEvents(dailyLogs: DailyLog[], todayDateKey: strin
 
   const currentCelebration = celebrationQueue[0] || null;
   const dismissCelebration = () => setCelebrationQueue((prev) => prev.slice(1));
+  const dismissStarEarnedToast = () => setStarEarnedToast(null);
 
-  return { currentCelebration, dismissCelebration };
+  return { currentCelebration, dismissCelebration, starEarnedToast, dismissStarEarnedToast };
 }

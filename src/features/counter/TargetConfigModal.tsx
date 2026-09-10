@@ -130,7 +130,7 @@ export const TargetConfigModal: React.FC<TargetConfigModalProps> = ({
               <div>
                 <div className="text-xs font-bold text-[var(--text)]">توقف در پایان هدف</div>
                 <div className="text-[11px] text-[var(--muted)] mt-0.5">
-                  روی عدد هدف می‌ایستد تا متوجه پایان ختم شوید (مناسب تسبیحات حضرت زهرا).
+                  پس از پایان ذکر برای ادامه دادن شمارش، باید دکمه‌ی صفر کردن شمارش را بزنید. در این حالت ذکرهای گفته‌شده‌ی شما در تاریخچه ثبت شده‌اند.
                 </div>
               </div>
             </label>

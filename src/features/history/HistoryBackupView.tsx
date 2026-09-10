@@ -12,6 +12,8 @@ import { computeLifetimeTotal, computeStarCount, computeEarnedBadges, BADGE_LEVE
 import { LockedFeatureId } from '../../lib/subscription';
 import { NotebookItemDef, NotebookDayEntry } from '../notebook/notebookTypes';
 import { HistorySearchCalendar } from './HistorySearchCalendar';
+import { MonthDetailModal } from './MonthDetailModal';
+import { getJalaliMonthDays } from '../../utils/jalali';
 import {
   Calendar,
   Download,
@@ -55,6 +57,7 @@ export const HistoryBackupView: React.FC<HistoryBackupViewProps> = ({
     text: string;
   } | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [isMonthDetailOpen, setIsMonthDetailOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const shamsiToday = getShamsiDateInfo();
@@ -148,7 +151,7 @@ export const HistoryBackupView: React.FC<HistoryBackupViewProps> = ({
   const backupSection = (
     <div className="bg-[var(--surface)] border border-[var(--accent)]/35 rounded-2xl p-4">
       <h3 className="text-sm font-bold text-[var(--text)] mb-1">
-        پشتیبان‌گیری و انتقال امن اطلاعات (JSON)
+        پشتیبان‌گیری و انتقال امن اطلاعات
       </h3>
       <p className="text-xs text-[var(--muted)] leading-relaxed mb-3.5">
         تمام آمار و ذکرهای شما به صورت خودکار در حافظهٔ مرورگر (IndexedDB) ذخیره می‌شوند. برای اطمینان ۱۰۰٪ هنگام تعویض گوشی یا بروزرسانی، می‌توانید فایل پشتیبان تهیه کنید.
@@ -178,7 +181,7 @@ export const HistoryBackupView: React.FC<HistoryBackupViewProps> = ({
           className="flex items-center justify-center gap-2 bg-[var(--accent)] hover:bg-[var(--accent-light)] text-white text-xs font-bold py-3 px-4 rounded-xl shadow-md transition-all"
         >
           <Download className="w-4 h-4" />
-          <span>دانلود فایل پشتیبان (JSON)</span>
+          <span>دانلود فایل پشتیبان</span>
         </button>
 
         <button
@@ -252,7 +255,11 @@ export const HistoryBackupView: React.FC<HistoryBackupViewProps> = ({
       </div>
 
       {/* This month */}
-      <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-4">
+      <button
+        type="button"
+        onClick={() => setIsMonthDetailOpen(true)}
+        className="w-full text-right bg-[var(--surface)] border border-[var(--border)] hover:border-[var(--accent)]/50 rounded-2xl p-4 transition-all"
+      >
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <ListChecks className="w-4 h-4 text-[var(--accent)]" />
@@ -281,7 +288,7 @@ export const HistoryBackupView: React.FC<HistoryBackupViewProps> = ({
           <NotebookPen className="w-3.5 h-3.5 text-[var(--accent)]" />
           دفترچهٔ کارهای خوب: {toPersianDigits(thisMonthNotebookDaysWithProgress)} روز از این ماه ثبت شده
         </div>
-      </div>
+      </button>
 
       {/* 7-day chart */}
       <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-4">
@@ -346,6 +353,16 @@ export const HistoryBackupView: React.FC<HistoryBackupViewProps> = ({
       </div>
 
       {backupSection}
+
+      <MonthDetailModal
+        isOpen={isMonthDetailOpen}
+        onClose={() => setIsMonthDetailOpen(false)}
+        monthLabel={`${shamsiToday.monthName} ${toPersianDigits(shamsiToday.year)}`}
+        days={getJalaliMonthDays(shamsiToday.year, shamsiToday.month).filter((d) => d.jalaliDay <= shamsiToday.day)}
+        dailyLogs={dailyLogs}
+        notebookItems={notebookItems}
+        notebookEntries={notebookEntries}
+      />
     </div>
   );
 };

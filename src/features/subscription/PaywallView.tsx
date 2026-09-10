@@ -3,8 +3,10 @@ import { UserSettings } from '../../lib/db';
 import { TasbihIcon } from '../../components/TasbihIcon';
 import { useToast } from '../../components/ToastProvider';
 import { getFeatureLockState, getTrialDaysRemaining } from '../../lib/subscription';
-import { toPersianDigits } from '../../utils/persian';
+import { formatFreeDaysLabel } from '../../lib/useTrialGate';
 import { PAYWALL_TRIAL_BANNER } from '../../lib/messages';
+import { ActiveDiscountCode, getSkuForDiscountPercent, MONTHLY_PRICING_SKUS } from '../../lib/discounts';
+import { toPersianDigits } from '../../utils/persian';
 import {
   Sparkles,
   Ban,
@@ -13,11 +15,14 @@ import {
   Palette,
   LayoutGrid,
   Check,
+  Tag,
 } from 'lucide-react';
 
 interface PaywallViewProps {
   settings: UserSettings;
   onUpdateSettings: (next: UserSettings) => void;
+  activeDiscountCode: ActiveDiscountCode | null;
+  onDiscountApplied: () => void;
 }
 
 const FEATURES: { icon: React.ReactNode; text: string; color: string }[] = [
@@ -30,13 +35,21 @@ const FEATURES: { icon: React.ReactNode; text: string; color: string }[] = [
   { icon: <LayoutGrid className="w-5 h-5" />, text: 'دسترسی به ویجت صفحهٔ اصلی (نسخهٔ اندروید)', color: '#14B8A6' },
 ];
 
-export const PaywallView: React.FC<PaywallViewProps> = ({ settings, onUpdateSettings }) => {
+export const PaywallView: React.FC<PaywallViewProps> = ({
+  settings,
+  onUpdateSettings,
+  activeDiscountCode,
+  onDiscountApplied,
+}) => {
   const { showToast } = useToast();
+  const sku = getSkuForDiscountPercent(activeDiscountCode?.tier ?? null);
 
   const handleSubscribe = () => {
     // No real payment gateway is connected yet — this simulates a successful
-    // purchase locally. See NOTES.md for the real integration plan.
-    onUpdateSettings({ ...settings, isProUser: true });
+    // purchase locally (at whichever SKU/price the active discount, if any,
+    // selected). See NOTES.md for the real integration plan.
+    onUpdateSettings({ ...settings, isProUser: true, proGrantExpiresAt: null });
+    if (activeDiscountCode) onDiscountApplied();
     showToast('اشتراک ماهانه با موفقیت فعال شد. از حمایت شما سپاسگزاریم 🌿', {
       kind: 'celebration',
       durationMs: 4500,
@@ -55,7 +68,7 @@ export const PaywallView: React.FC<PaywallViewProps> = ({ settings, onUpdateSett
         </p>
         <button
           type="button"
-          onClick={() => onUpdateSettings({ ...settings, isProUser: false })}
+          onClick={() => onUpdateSettings({ ...settings, isProUser: false, proGrantExpiresAt: null })}
           className="text-[11px] text-[var(--muted)] underline"
         >
           غیرفعال کردن اشتراک (فقط برای تست)
@@ -68,9 +81,25 @@ export const PaywallView: React.FC<PaywallViewProps> = ({ settings, onUpdateSett
 
   return (
     <div className="flex flex-col flex-1 w-full max-w-md mx-auto px-4 pt-4 pb-8">
+      {activeDiscountCode && (
+        <div className="flex items-center gap-2.5 bg-[var(--accent)]/10 border border-[var(--accent)]/40 rounded-2xl px-4 py-3 mb-3">
+          <Tag className="w-4 h-4 text-[var(--accent)] shrink-0" />
+          <span className="flex-1 text-xs font-bold text-[var(--text)]">
+            کد تخفیف {toPersianDigits(activeDiscountCode.tier)}٪ شما فعاله
+          </span>
+          <button
+            type="button"
+            onClick={handleSubscribe}
+            className="shrink-0 px-3 py-1.5 rounded-xl bg-[var(--accent)] hover:bg-[var(--accent-light)] text-white text-[11px] font-bold"
+          >
+            اعمال خودکار
+          </button>
+        </div>
+      )}
+
       {lockState !== 'locked' && (
         <div className="bg-[var(--accent)]/10 border border-[var(--accent)]/30 rounded-2xl px-4 py-2.5 text-xs font-bold text-[var(--text)] text-center mb-4">
-          {PAYWALL_TRIAL_BANNER(toPersianDigits(getTrialDaysRemaining()))}
+          {PAYWALL_TRIAL_BANNER(formatFreeDaysLabel(getTrialDaysRemaining()))}
         </div>
       )}
 
@@ -105,7 +134,14 @@ export const PaywallView: React.FC<PaywallViewProps> = ({ settings, onUpdateSett
       </p>
 
       <div className="text-center mb-3">
-        <span className="text-2xl font-black text-[var(--accent)]">۳۰ هزار تومان</span>
+        {activeDiscountCode && (
+          <div className="text-xs text-[var(--muted)] line-through mb-0.5 tabular-nums-fa">
+            {toPersianDigits(MONTHLY_PRICING_SKUS.full.priceToman / 1000)} هزار تومان
+          </div>
+        )}
+        <span className="text-2xl font-black text-[var(--accent)] tabular-nums-fa">
+          {toPersianDigits(sku.priceToman / 1000)} هزار تومان
+        </span>
         <span className="text-xs text-[var(--muted)]"> / ماهانه</span>
       </div>
 

@@ -8,7 +8,7 @@ import {
   TRIAL_WARNING_MESSAGE,
   TRIAL_ENDED_MESSAGE,
 } from './subscription';
-import { toPersianDigits } from '../utils/persian';
+import { formatFreeDaysLabel } from './useTrialGate';
 import { useToast } from '../components/ToastProvider';
 import { FeatureLockModal } from '../components/FeatureLockModal';
 
@@ -54,7 +54,7 @@ export const FeatureGateProvider: React.FC<FeatureGateProviderProps> = ({
 
       if (state === 'warning') {
         if (!wasWarningShownToday(todayDateKey)) {
-          showToast(TRIAL_WARNING_MESSAGE(toPersianDigits(getTrialDaysRemaining())), {
+          showToast(TRIAL_WARNING_MESSAGE(formatFreeDaysLabel(getTrialDaysRemaining())), {
             kind: 'info',
             durationMs: 4200,
           });
