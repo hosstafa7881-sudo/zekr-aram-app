@@ -14,6 +14,18 @@ export const REMINDER_MESSAGE =
 
 const LAST_NOTIFIED_KEY = 'zikraram_reminder_last_notified_v1';
 
+// In-memory backstop alongside the localStorage flag below. If the
+// localStorage write ever silently fails (private-browsing storage limits,
+// quota pressure from years of unlimited daily-log history, etc.), the
+// once-per-day guard would never persist and this 60-second interval
+// (see useDailyReminder.ts) would fire a brand-new `Notification()` — with
+// its own system sound — every single minute for as long as the reminder
+// stays past due. This is the most concrete, reproducible explanation we
+// could find in the code for a real-device report of a repeating
+// notification-like sound; the in-memory flag guarantees at most one real
+// Notification per calendar day per page load even if storage is broken.
+let firedInMemoryForDateKey: string | null = null;
+
 export function isNotificationSupported(): boolean {
   return typeof window !== 'undefined' && 'Notification' in window;
 }
@@ -63,6 +75,7 @@ export function maybeFireDailyReminder(options: {
   if (todayHasAnyDhikr) return;
   if (getNotificationPermission() !== 'granted') return;
   if (wasNotifiedToday(todayDateKey)) return;
+  if (firedInMemoryForDateKey === todayDateKey) return;
 
   const [hh, mm] = reminderTime.split(':').map((v) => parseInt(v, 10));
   if (Number.isNaN(hh) || Number.isNaN(mm)) return;
@@ -72,6 +85,7 @@ export function maybeFireDailyReminder(options: {
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
 
   if (nowMinutes >= reminderMinutes) {
+    firedInMemoryForDateKey = todayDateKey;
     try {
       new Notification('ذکرآرام', {
         body: REMINDER_MESSAGE,

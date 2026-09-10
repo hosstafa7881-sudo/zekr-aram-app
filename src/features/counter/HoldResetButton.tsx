@@ -96,7 +96,7 @@ export const HoldResetButton: React.FC<HoldResetButtonProps> = ({
       >
         {holding
           ? `نگه دارید (${Math.ceil(((100 - progress) / 100) * 1.4)} ثانیه)...`
-          : 'برای صفر کردن شمارش، دکمه را چند ثانیه نگه دارید.'}
+          : 'دکمه را چند ثانیه نگه دارید'}
       </span>
     </div>
   );

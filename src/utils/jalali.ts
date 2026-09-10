@@ -68,6 +68,23 @@ export function getJalaliMonthStartWeekday(jy: number, jm: number): number {
   return getShamsiDateInfo(firstDay).weekdayIndex;
 }
 
+export interface RollingDay {
+  gregorianDate: Date;
+  dateKey: string;
+}
+
+/** Today plus the previous `count - 1` days (a rolling window, not a calendar month) — e.g. count=30 gives today and the 29 days before it, ordered newest-first. */
+export function getRollingDays(count: number, endDate = new Date()): RollingDay[] {
+  const start = new Date(endDate);
+  start.setHours(0, 0, 0, 0);
+  const days: RollingDay[] = [];
+  for (let i = 0; i < count; i++) {
+    const d = addDays(start, -i);
+    days.push({ gregorianDate: d, dateKey: toDateKey(d) });
+  }
+  return days;
+}
+
 export function shiftJalaliMonth(jy: number, jm: number, delta: number): { jy: number; jm: number } {
   let total = jm - 1 + delta;
   let newYear = jy + Math.floor(total / 12);
