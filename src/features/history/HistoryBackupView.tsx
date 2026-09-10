@@ -10,10 +10,11 @@ import {
 import { toPersianDigits, getShamsiDateInfo } from '../../utils/persian';
 import { computeLifetimeTotal, computeStarCount, computeEarnedBadges, BADGE_LEVELS } from '../../lib/gamification';
 import { LockedFeatureId } from '../../lib/subscription';
+import { useTrialGate } from '../../lib/useTrialGate';
 import { NotebookItemDef, NotebookDayEntry } from '../notebook/notebookTypes';
 import { HistorySearchCalendar } from './HistorySearchCalendar';
-import { MonthDetailModal } from './MonthDetailModal';
-import { getJalaliMonthDays } from '../../utils/jalali';
+import { Last30DaysView } from './Last30DaysView';
+import { getRollingDays } from '../../utils/jalali';
 import {
   Calendar,
   Download,
@@ -27,6 +28,7 @@ import {
   Eye,
   Star,
   NotebookPen,
+  Clock,
 } from 'lucide-react';
 
 interface HistoryBackupViewProps {
@@ -57,8 +59,9 @@ export const HistoryBackupView: React.FC<HistoryBackupViewProps> = ({
     text: string;
   } | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
-  const [isMonthDetailOpen, setIsMonthDetailOpen] = useState(false);
+  const [isLast30DaysOpen, setIsLast30DaysOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const trialGate = useTrialGate(settings.isProUser);
 
   const shamsiToday = getShamsiDateInfo();
   const totalLifetimeCount = computeLifetimeTotal(dailyLogs);
@@ -66,26 +69,22 @@ export const HistoryBackupView: React.FC<HistoryBackupViewProps> = ({
   const earnedBadges = computeEarnedBadges(totalLifetimeCount);
   const starLabel = starCount < 10 ? '⭐'.repeat(starCount) : `${toPersianDigits(starCount)} ⭐`;
 
-  // This month (Jalali) summary
-  const thisMonthLogs = dailyLogs.filter((l) => {
-    const info = getShamsiDateInfo(new Date(l.dateKey + 'T00:00:00'));
-    return info.year === shamsiToday.year && info.month === shamsiToday.month;
-  });
-  const thisMonthTotal = thisMonthLogs.reduce((sum, l) => sum + l.totalCount, 0);
-  const thisMonthBreakdown = new Map<string, { title: string; count: number }>();
-  thisMonthLogs.forEach((l) => {
+  // Rolling last-30-days summary (not calendar month — بخش ت #12/#16)
+  const last30DaysWindow = getRollingDays(30);
+  const last30DaysKeys = new Set(last30DaysWindow.map((d) => d.dateKey));
+  const last30DaysLogs = dailyLogs.filter((l) => last30DaysKeys.has(l.dateKey));
+  const last30DaysTotal = last30DaysLogs.reduce((sum, l) => sum + l.totalCount, 0);
+  const last30DaysBreakdown = new Map<string, { title: string; count: number }>();
+  last30DaysLogs.forEach((l) => {
     Object.entries(l.breakdown).forEach(([id, item]) => {
-      const existing = thisMonthBreakdown.get(id);
-      thisMonthBreakdown.set(id, { title: item.title, count: (existing?.count || 0) + item.count });
+      const existing = last30DaysBreakdown.get(id);
+      last30DaysBreakdown.set(id, { title: item.title, count: (existing?.count || 0) + item.count });
     });
   });
 
-  // Notebook completion for this month
-  const thisMonthNotebookEntries = notebookEntries.filter((e) => {
-    const info = getShamsiDateInfo(new Date(e.dateKey + 'T00:00:00'));
-    return info.year === shamsiToday.year && info.month === shamsiToday.month;
-  });
-  const thisMonthNotebookDaysWithProgress = thisMonthNotebookEntries.filter(
+  // Notebook completion for the last 30 days
+  const last30DaysNotebookEntries = notebookEntries.filter((e) => last30DaysKeys.has(e.dateKey));
+  const last30DaysNotebookDaysWithProgress = last30DaysNotebookEntries.filter(
     (e) => e.checkedItemIds.length > 0
   ).length;
 
@@ -215,9 +214,23 @@ export const HistoryBackupView: React.FC<HistoryBackupViewProps> = ({
             {settings.isProUser ? <BarChart3 className="w-5 h-5" /> : <Lock className="w-5 h-5" />}
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-sm font-bold text-[var(--text)]">ریزآمار روزهای گذشته</div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="text-sm font-bold text-[var(--text)]">ریزآمار روزهای گذشته</div>
+              {!settings.isProUser && (
+                <span
+                  className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                    trialGate.isLocked
+                      ? 'bg-[var(--muted)]/15 text-[var(--muted)] border border-[var(--border)]'
+                      : 'bg-[var(--accent)]/15 text-[var(--accent)] border border-[var(--accent)]/30'
+                  }`}
+                >
+                  {trialGate.isLocked ? <Lock className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
+                  {trialGate.isLocked ? 'ویژه مشترکین' : trialGate.freeDaysLabel}
+                </span>
+              )}
+            </div>
             <div className="text-[11px] text-[var(--muted)] mt-0.5">
-              این ماه، نمودار ۷ روز اخیر، جست‌وجوی تقویمی، دفترچه و مدال‌ها
+              ۳۰ روز اخیر، نمودار ۷ روز اخیر، جست‌وجوی تقویمی، دفترچه و مدال‌ها
             </div>
           </div>
           <Eye className="w-4 h-4 text-[var(--muted)] shrink-0" />
@@ -254,26 +267,26 @@ export const HistoryBackupView: React.FC<HistoryBackupViewProps> = ({
         </div>
       </div>
 
-      {/* This month */}
+      {/* Last 30 days (rolling window, not calendar month) */}
       <button
         type="button"
-        onClick={() => setIsMonthDetailOpen(true)}
+        onClick={() => setIsLast30DaysOpen(true)}
         className="w-full text-right bg-[var(--surface)] border border-[var(--border)] hover:border-[var(--accent)]/50 rounded-2xl p-4 transition-all"
       >
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <ListChecks className="w-4 h-4 text-[var(--accent)]" />
-            <h3 className="text-sm font-bold text-[var(--text)]">این ماه</h3>
+            <h3 className="text-sm font-bold text-[var(--text)]">۳۰ روز اخیر</h3>
           </div>
           <span className="text-xs font-extrabold text-[var(--accent)] tabular-nums-fa">
-            {toPersianDigits(thisMonthTotal)} ذکر
+            {toPersianDigits(last30DaysTotal)} ذکر
           </span>
         </div>
-        {thisMonthBreakdown.size === 0 ? (
-          <p className="text-xs text-[var(--muted)] text-center py-2">هنوز این ماه ذکری ثبت نشده است.</p>
+        {last30DaysBreakdown.size === 0 ? (
+          <p className="text-xs text-[var(--muted)] text-center py-2">در ۳۰ روز اخیر ذکری ثبت نشده است.</p>
         ) : (
           <div className="flex flex-wrap gap-1.5 mb-3">
-            {Array.from(thisMonthBreakdown.entries()).map(([id, item]) => (
+            {Array.from(last30DaysBreakdown.entries()).map(([id, item]) => (
               <span
                 key={id}
                 className="inline-flex items-center gap-1 bg-[var(--bg)] text-[var(--muted)] text-[11px] px-2 py-0.5 rounded-lg border border-[var(--border)] tabular-nums-fa"
@@ -286,7 +299,7 @@ export const HistoryBackupView: React.FC<HistoryBackupViewProps> = ({
         )}
         <div className="flex items-center gap-1.5 text-[11px] text-[var(--muted)] pt-2 border-t border-[var(--border)]">
           <NotebookPen className="w-3.5 h-3.5 text-[var(--accent)]" />
-          دفترچهٔ کارهای خوب: {toPersianDigits(thisMonthNotebookDaysWithProgress)} روز از این ماه ثبت شده
+          دفترچهٔ کارهای خوب: {toPersianDigits(last30DaysNotebookDaysWithProgress)} روز از ۳۰ روز اخیر ثبت شده
         </div>
       </button>
 
@@ -352,16 +365,14 @@ export const HistoryBackupView: React.FC<HistoryBackupViewProps> = ({
         />
       </div>
 
-      {backupSection}
-
-      <MonthDetailModal
-        isOpen={isMonthDetailOpen}
-        onClose={() => setIsMonthDetailOpen(false)}
-        monthLabel={`${shamsiToday.monthName} ${toPersianDigits(shamsiToday.year)}`}
-        days={getJalaliMonthDays(shamsiToday.year, shamsiToday.month).filter((d) => d.jalaliDay <= shamsiToday.day)}
+      <Last30DaysView
+        isOpen={isLast30DaysOpen}
+        onClose={() => setIsLast30DaysOpen(false)}
+        days={last30DaysWindow}
         dailyLogs={dailyLogs}
         notebookItems={notebookItems}
         notebookEntries={notebookEntries}
+        onDeleteDay={onDeleteDailyLog}
       />
     </div>
   );

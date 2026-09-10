@@ -20,6 +20,16 @@ import {
   Layers,
 } from 'lucide-react';
 
+// Stage-name placeholders: the first two (fixed) rows keep a concrete
+// example each (سبحان‌الله / الله اکبر) to show the expected format; rows
+// added later via «افزودن مرحله» are the user's own deliberate addition, so
+// they get a plain label with no example.
+function getStageNamePlaceholder(index: number): string {
+  if (index === 0) return 'نام مرحله (مثلاً: سبحان‌الله)';
+  if (index === 1) return 'نام مرحله (مثلاً: الله اکبر)';
+  return 'نام مرحله';
+}
+
 interface DhikrLibraryViewProps {
   dhikrs: DhikrItem[];
   activeDhikrId: string;
@@ -450,106 +460,127 @@ export const DhikrLibraryView: React.FC<DhikrLibraryViewProps> = ({
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-[var(--text)] mb-1">
-                  متن عربی / ذکر (پشتیبانی از متن طولانی)
-                </label>
-                <textarea
-                  rows={3}
-                  placeholder="لَا إِلٰهَ إِلَّا أَنْتَ سُبْحَانَكَ إِنِّي كُنْتُ مِنَ الظَّالِمِينَ"
-                  value={arabicText}
-                  onChange={(e) => setArabicText(e.target.value)}
-                  className="w-full bg-[var(--bg)] border border-[var(--border)] focus:border-[var(--accent)] rounded-xl px-3.5 py-2.5 text-sm text-[var(--text)] outline-none leading-relaxed"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-[var(--text)] mb-1">
-                  ترجمه فارسی یا یادداشت (اختیاری)
-                </label>
-                <textarea
-                  rows={2}
-                  placeholder="معبودی جز تو نیست، منزهی تو، همانا من از ستمکاران بودم."
-                  value={translation}
-                  onChange={(e) => setTranslation(e.target.value)}
-                  className="w-full bg-[var(--bg)] border border-[var(--border)] focus:border-[var(--accent)] rounded-xl px-3.5 py-2.5 text-xs text-[var(--text)] outline-none leading-relaxed"
-                />
-              </div>
+              {/* «متن عربی / ذکر» فقط برای تک‌مرحله‌ای — در حالت چندمرحله‌ای هر
+                  مرحله متن مخصوص خودش را دارد و یک متن عربی کلی بی‌معنی است. */}
+              {!isMultiStage && (
+                <div>
+                  <label className="block text-xs font-bold text-[var(--text)] mb-1">
+                    متن عربی / ذکر (پشتیبانی از متن طولانی)
+                  </label>
+                  <textarea
+                    rows={3}
+                    placeholder="لَا إِلٰهَ إِلَّا أَنْتَ سُبْحَانَكَ إِنِّي كُنْتُ مِنَ الظَّالِمِينَ"
+                    value={arabicText}
+                    onChange={(e) => setArabicText(e.target.value)}
+                    className="w-full bg-[var(--bg)] border border-[var(--border)] focus:border-[var(--accent)] rounded-xl px-3.5 py-2.5 text-sm text-[var(--text)] outline-none leading-relaxed"
+                  />
+                </div>
+              )}
 
               {isMultiStage ? (
-                <div className="space-y-2.5">
-                  <label className="block text-xs font-bold text-[var(--text)]">مراحل ذکر</label>
-                  {stages.map((stage, idx) => (
-                    <div key={stage.id} className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-[var(--muted)] w-4 shrink-0">
-                        {toPersianDigits(idx + 1)}
-                      </span>
-                      <input
-                        type="text"
-                        placeholder="نام مرحله (مثلاً: سبحان‌الله)"
-                        value={stage.name}
-                        onChange={(e) => updateStageRow(stage.id, { name: e.target.value })}
-                        className="flex-1 bg-[var(--bg)] border border-[var(--border)] focus:border-[var(--accent)] rounded-xl px-3 py-2 text-xs text-[var(--text)] outline-none"
-                      />
-                      <input
-                        type="number"
-                        min={1}
-                        max={10000}
-                        value={stage.target}
-                        onChange={(e) => updateStageRow(stage.id, { target: parseInt(e.target.value, 10) || 1 })}
-                        className="w-16 bg-[var(--bg)] border border-[var(--border)] focus:border-[var(--accent)] rounded-xl px-2 py-2 text-xs font-bold text-center text-[var(--text)] tabular-nums-fa outline-none"
-                      />
-                      {stages.length > 2 && (
-                        <button
-                          type="button"
-                          onClick={() => removeStageRow(stage.id)}
-                          className="p-1.5 rounded-lg text-[var(--muted)] hover:text-[var(--danger)] hover:bg-[var(--danger)]/10 shrink-0"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={addStageRow}
-                    className="flex items-center gap-1.5 text-xs font-bold text-[var(--accent)] hover:underline"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    افزودن مرحله
-                  </button>
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 gap-3">
+                <>
+                  <div className="space-y-2.5">
+                    <label className="block text-xs font-bold text-[var(--text)]">مراحل ذکر</label>
+                    {stages.map((stage, idx) => (
+                      <div key={stage.id} className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-[var(--muted)] w-4 shrink-0">
+                          {toPersianDigits(idx + 1)}
+                        </span>
+                        <input
+                          type="text"
+                          placeholder={getStageNamePlaceholder(idx)}
+                          value={stage.name}
+                          onChange={(e) => updateStageRow(stage.id, { name: e.target.value })}
+                          className="flex-1 bg-[var(--bg)] border border-[var(--border)] focus:border-[var(--accent)] rounded-xl px-3 py-2 text-xs text-[var(--text)] outline-none"
+                        />
+                        <input
+                          type="number"
+                          min={1}
+                          max={10000}
+                          value={stage.target}
+                          onChange={(e) => updateStageRow(stage.id, { target: parseInt(e.target.value, 10) || 1 })}
+                          className="w-16 bg-[var(--bg)] border border-[var(--border)] focus:border-[var(--accent)] rounded-xl px-2 py-2 text-xs font-bold text-center text-[var(--text)] tabular-nums-fa outline-none"
+                        />
+                        {stages.length > 2 && (
+                          <button
+                            type="button"
+                            onClick={() => removeStageRow(stage.id)}
+                            className="p-1.5 rounded-lg text-[var(--muted)] hover:text-[var(--danger)] hover:bg-[var(--danger)]/10 shrink-0"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={addStageRow}
+                      className="flex items-center gap-1.5 text-xs font-bold text-[var(--accent)] hover:underline"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      افزودن مرحله
+                    </button>
+                  </div>
+
                   <div>
                     <label className="block text-xs font-bold text-[var(--text)] mb-1">
-                      هدف پیش‌فرض
+                      ترجمه فارسی یا یادداشت (اختیاری)
                     </label>
-                    <input
-                      type="number"
-                      min={1}
-                      max={100000}
-                      value={target}
-                      onChange={(e) => setTarget(parseInt(e.target.value, 10) || 100)}
-                      className="w-full bg-[var(--bg)] border border-[var(--border)] focus:border-[var(--accent)] rounded-xl px-3 py-2 text-sm font-bold text-center text-[var(--text)] tabular-nums-fa outline-none"
+                    <textarea
+                      rows={2}
+                      placeholder="معبودی جز تو نیست، منزهی تو، همانا من از ستمکاران بودم."
+                      value={translation}
+                      onChange={(e) => setTranslation(e.target.value)}
+                      className="w-full bg-[var(--bg)] border border-[var(--border)] focus:border-[var(--accent)] rounded-xl px-3.5 py-2.5 text-xs text-[var(--text)] outline-none leading-relaxed"
+                    />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <label className="block text-xs font-bold text-[var(--text)] mb-1">
+                      ترجمه فارسی یا یادداشت (اختیاری)
+                    </label>
+                    <textarea
+                      rows={2}
+                      placeholder="معبودی جز تو نیست، منزهی تو، همانا من از ستمکاران بودم."
+                      value={translation}
+                      onChange={(e) => setTranslation(e.target.value)}
+                      className="w-full bg-[var(--bg)] border border-[var(--border)] focus:border-[var(--accent)] rounded-xl px-3.5 py-2.5 text-xs text-[var(--text)] outline-none leading-relaxed"
                     />
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-bold text-[var(--text)] mb-1">
-                      حالت پایان هدف
-                    </label>
-                    <select
-                      value={targetMode}
-                      onChange={(e) => setTargetMode(e.target.value as TargetMode)}
-                      className="w-full bg-[var(--bg)] border border-[var(--border)] focus:border-[var(--accent)] rounded-xl px-2.5 py-2 text-xs text-[var(--text)] outline-none"
-                    >
-                      <option value="notify-continue">هشدار + ادامه</option>
-                      <option value="stop">توقف در پایان</option>
-                      <option value="loop">دور خودکار</option>
-                    </select>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-[var(--text)] mb-1">
+                        هدف پیش‌فرض
+                      </label>
+                      <input
+                        type="number"
+                        min={1}
+                        max={100000}
+                        value={target}
+                        onChange={(e) => setTarget(parseInt(e.target.value, 10) || 100)}
+                        className="w-full bg-[var(--bg)] border border-[var(--border)] focus:border-[var(--accent)] rounded-xl px-3 py-2 text-sm font-bold text-center text-[var(--text)] tabular-nums-fa outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-[var(--text)] mb-1">
+                        حالت پایان هدف
+                      </label>
+                      <select
+                        value={targetMode}
+                        onChange={(e) => setTargetMode(e.target.value as TargetMode)}
+                        className="w-full bg-[var(--bg)] border border-[var(--border)] focus:border-[var(--accent)] rounded-xl px-2.5 py-2 text-xs text-[var(--text)] outline-none"
+                      >
+                        <option value="notify-continue">هشدار + ادامه</option>
+                        <option value="stop">توقف در پایان</option>
+                        <option value="loop">دور خودکار</option>
+                      </select>
+                    </div>
                   </div>
-                </div>
+                </>
               )}
 
               <div className="flex items-center gap-2 pt-2">

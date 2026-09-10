@@ -153,9 +153,18 @@
    throwing the highlight badly off horizontally on every single step while
    top/width/height (which don't depend on horizontal static position)
    looked correct. Position is fully controlled by the `absolute` utility
-   in OnboardingTour.tsx. */
+   in OnboardingTour.tsx.
+   MUST NOT declare `z-index` here either: this element and the tooltip box
+   are sibling children of the same `position: fixed` stacking-context
+   container. An explicit z-index here (it used to be 60) made this
+   element's own 9999px `box-shadow` darkening layer paint *above* the
+   tooltip box (whose z-index is auto/0), tinting the tooltip's background
+   dark/opaque instead of the intended readable white — the exact "tooltip
+   text box looks dark, as if part of the dimmed backdrop" bug. Leaving
+   z-index unset lets normal DOM order apply, and OnboardingTour.tsx now
+   also gives the tooltip its own explicit `z-10` so it always paints on
+   top regardless of order. */
 .onboarding-spotlight {
-  z-index: 60;
   border-radius: 1rem;
   box-shadow: 0 0 0 4px var(--accent), 0 0 0 9999px rgba(0, 0, 0, 0.72);
 }

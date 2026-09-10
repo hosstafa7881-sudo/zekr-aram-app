@@ -212,8 +212,12 @@ export const CounterView: React.FC<CounterViewProps> = ({
 
   return (
     <div className="flex flex-col flex-1 w-full max-w-md mx-auto px-3 pt-2 pb-4 select-none">
-      {/* Top utilities: Reset & Decrement, with visible text labels */}
-      <div className="flex items-center gap-1.5 mb-2">
+      {/* Top utilities: Reset & Decrement, with visible text labels.
+          items-start (not items-center) so the two buttons' tops line up —
+          the reset button's column is taller because of its caption line
+          below it, and centering the row let the plain decrement button
+          drift visually lower/out of alignment with it. */}
+      <div className="flex items-start gap-1.5 mb-2">
         <HoldResetButton
           onResetConfirmed={onReset}
           disabled={activeDhikr.count === 0}
@@ -258,27 +262,26 @@ export const CounterView: React.FC<CounterViewProps> = ({
         <CustomStageBar stages={activeDhikr.customStages} totalCount={activeDhikr.count} />
       )}
 
-      {/* Sacred Dhikr Text & Translation Card */}
-      <div className="bg-[var(--surface)]/85 border border-[var(--border)] rounded-2xl p-3.5 mb-2 text-center shadow-inner">
-        <p
-          className="text-lg sm:text-xl font-bold text-[var(--text)] leading-relaxed tracking-wide mb-1.5"
-          dir="rtl"
-        >
-          {tasbihatStage
-            ? tasbihatStage.arabicTitle
-            : customStage
-            ? customStage.stageName
-            : displayedArabicText}
-        </p>
-        {/* Multi-stage dhikrs (Tasbihat Zahra / custom) already show this same
-            breakdown in the colored stage bar above — repeating it here as a
-            translation paragraph is redundant and just adds extra scroll. */}
-        {activeDhikr.translation && !tasbihatStage && !customStage && (
-          <p className="text-xs text-[var(--muted)] leading-relaxed line-clamp-2">
-            {activeDhikr.translation}
+      {/* Sacred Dhikr Text & Translation Card — multi-stage dhikrs (Tasbihat
+          Zahra / custom) already show the current stage's phrase in the
+          colored stage bar above, so this whole card (not just the
+          translation line) is skipped entirely for them; it's redundant and
+          adds extra scroll. Single-stage dhikrs keep it as-is. */}
+      {!tasbihatStage && !customStage && (
+        <div className="bg-[var(--surface)]/85 border border-[var(--border)] rounded-2xl p-3.5 mb-2 text-center shadow-inner">
+          <p
+            className="text-lg sm:text-xl font-bold text-[var(--text)] leading-relaxed tracking-wide mb-1.5"
+            dir="rtl"
+          >
+            {displayedArabicText}
           </p>
-        )}
-      </div>
+          {activeDhikr.translation && (
+            <p className="text-xs text-[var(--muted)] leading-relaxed line-clamp-2">
+              {activeDhikr.translation}
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Milestone / Completion Notification Toast */}
       {milestoneBanner && (

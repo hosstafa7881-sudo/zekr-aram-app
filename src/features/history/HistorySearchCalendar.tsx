@@ -4,7 +4,13 @@ import { NotebookItemDef, NotebookDayEntry } from '../notebook/notebookTypes';
 import { toPersianDigits, getShamsiDateInfo } from '../../utils/persian';
 import { getJalaliMonthDays, shiftJalaliMonth } from '../../utils/jalali';
 import { HistoryDayDetailModal } from './HistoryDayDetailModal';
+import { DayFullDetailView } from './DayFullDetailView';
 import { ChevronRight, ChevronLeft } from 'lucide-react';
+
+function formatFullShamsiDate(date: Date): string {
+  const info = getShamsiDateInfo(date);
+  return `${toPersianDigits(info.day)} ${info.monthName} ${toPersianDigits(info.year)}`;
+}
 
 const WEEKDAY_HEADERS = ['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج'];
 
@@ -25,6 +31,7 @@ export const HistorySearchCalendar: React.FC<HistorySearchCalendarProps> = ({
   const [viewYear, setViewYear] = useState(todayInfo.year);
   const [viewMonth, setViewMonth] = useState(todayInfo.month);
   const [selectedDateKey, setSelectedDateKey] = useState<string | null>(null);
+  const [isFullDetailOpen, setIsFullDetailOpen] = useState(false);
 
   const monthDays = useMemo(() => getJalaliMonthDays(viewYear, viewMonth), [viewYear, viewMonth]);
   const startWeekday = monthDays.length > 0 ? getShamsiDateInfo(monthDays[0].gregorianDate).weekdayIndex : 0;
@@ -111,8 +118,23 @@ export const HistorySearchCalendar: React.FC<HistorySearchCalendarProps> = ({
       </div>
 
       <HistoryDayDetailModal
-        isOpen={selectedDateKey !== null}
+        isOpen={selectedDateKey !== null && !isFullDetailOpen}
         onClose={() => setSelectedDateKey(null)}
+        log={selectedDateKey ? logByKey.get(selectedDateKey) : undefined}
+        notebookEntry={selectedDateKey ? notebookByKey.get(selectedDateKey) : undefined}
+        notebookItems={notebookItems}
+        shamsiDateLabel={selectedDateKey ? formatFullShamsiDate(new Date(`${selectedDateKey}T00:00:00`)) : ''}
+        onOpenFullDetail={() => setIsFullDetailOpen(true)}
+      />
+
+      <DayFullDetailView
+        isOpen={isFullDetailOpen && selectedDateKey !== null}
+        onClose={() => {
+          setIsFullDetailOpen(false);
+          setSelectedDateKey(null);
+        }}
+        dateKey={selectedDateKey || ''}
+        shamsiDateLabel={selectedDateKey ? formatFullShamsiDate(new Date(`${selectedDateKey}T00:00:00`)) : ''}
         log={selectedDateKey ? logByKey.get(selectedDateKey) : undefined}
         notebookEntry={selectedDateKey ? notebookByKey.get(selectedDateKey) : undefined}
         notebookItems={notebookItems}

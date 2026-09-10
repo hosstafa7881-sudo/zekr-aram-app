@@ -106,7 +106,7 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({ isActive, onFini
       )}
 
       <div
-        className="absolute right-4 left-4 max-w-sm mx-auto bg-[var(--surface)] border border-[var(--accent)]/40 rounded-2xl p-4 shadow-2xl"
+        className="absolute z-10 right-4 left-4 max-w-sm mx-auto bg-[var(--surface)] border border-[var(--accent)]/40 rounded-2xl p-4 shadow-2xl"
         style={{ top: tooltipTop }}
       >
         <div className="flex items-start justify-between gap-2 mb-1.5">
