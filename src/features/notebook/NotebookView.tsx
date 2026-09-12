@@ -2,8 +2,7 @@ import React, { useState } from 'react';
 import { NotebookItemDef, NotebookDayEntry, FEELING_STICKERS } from './notebookTypes';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { useToast } from '../../components/ToastProvider';
-import { getTrialDaysRemaining } from '../../lib/subscription';
-import { formatFreeDaysLabel } from '../../lib/useTrialGate';
+import { useTrialGate } from '../../lib/useTrialGate';
 import { NOTEBOOK_TRIAL_BANNER } from '../../lib/messages';
 import { Plus, Trash2, Check, Smile, ClipboardCheck } from 'lucide-react';
 
@@ -30,6 +29,10 @@ export const NotebookView: React.FC<NotebookViewProps> = ({
   onUpdateFeelingText,
   onToggleSticker,
 }) => {
+  // دور ششم / مورد ۶ — the banner reads the ONE shared trial gate, so it shows
+  // the same stacked number («۶۰ روز دیگه رایگانه») as every other label after
+  // the ۱۰۰٪ code is activated, and ticks down day by day with them.
+  const trialGate = useTrialGate(isProUser);
   const [newItemText, setNewItemText] = useState('');
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const { showToast } = useToast();
@@ -56,8 +59,11 @@ export const NotebookView: React.FC<NotebookViewProps> = ({
       </div>
 
       {!isProUser && (
-        <div className="bg-[var(--accent)]/10 border border-[var(--accent)]/30 rounded-2xl px-4 py-2.5 text-xs font-bold text-[var(--text)] text-center">
-          {NOTEBOOK_TRIAL_BANNER(formatFreeDaysLabel(getTrialDaysRemaining()))}
+        <div
+          data-testid="notebook-trial-banner"
+          className="bg-[var(--accent)]/10 border border-[var(--accent)]/30 rounded-2xl px-4 py-2.5 text-xs font-bold text-[var(--text)] text-center"
+        >
+          {NOTEBOOK_TRIAL_BANNER(trialGate.freeDaysLabel)}
         </div>
       )}
 

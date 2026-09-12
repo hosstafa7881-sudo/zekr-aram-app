@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Gift, X } from 'lucide-react';
 import { getShamsiDateInfo, toPersianDigits } from '../../utils/persian';
 import { ReferralGrantResult, getFreeDaysLeft } from '../../lib/discounts';
@@ -13,6 +13,16 @@ interface ReferralDiscountModalProps {
   nextEligibleDate: number | null;
   onClaim: () => ReferralGrantResult;
 }
+
+/**
+ * دور ششم / مورد ۵ — for this long after a «دانلود تصویر آماده» /
+ * «اشتراک‌گذاری مستقیم» press, the activation button is visibly disabled.
+ * That window covers the moment the Android share sheet or the download bar
+ * closes, which is when a stray click can be delivered to whatever is now
+ * under the finger. Short enough that a real user never notices it — going
+ * off to actually share the picture takes far longer than a second.
+ */
+const IMAGE_ACTION_GUARD_MS = 900;
 
 function shamsi(timestamp: number): string {
   return getShamsiDateInfo(new Date(timestamp)).formattedFull;
@@ -39,12 +49,48 @@ export const ReferralDiscountModal: React.FC<ReferralDiscountModalProps> = ({
   onClaim,
 }) => {
   const [justClaimed, setJustClaimed] = useState<ReferralGrantResult | null>(null);
+  // دور ششم / مورد ۵ — true for a moment after either picture button is
+  // pressed. While it is true the activation button is really `disabled`, so
+  // a stray click can't reach it AND the user can see why nothing happened.
+  const [imageActionGuard, setImageActionGuard] = useState(false);
+  const lastImageActionAt = useRef(0);
+  const guardTimer = useRef<number | null>(null);
+
+  useEffect(
+    () => () => {
+      if (guardTimer.current !== null) window.clearTimeout(guardTimer.current);
+    },
+    []
+  );
+
+  const noteImageAction = () => {
+    lastImageActionAt.current = Date.now();
+    setImageActionGuard(true);
+    if (guardTimer.current !== null) window.clearTimeout(guardTimer.current);
+    guardTimer.current = window.setTimeout(
+      () => setImageActionGuard(false),
+      IMAGE_ACTION_GUARD_MS
+    );
+  };
 
   if (!isOpen) return null;
 
   const handleClose = () => {
     setJustClaimed(null);
     onClose();
+  };
+
+  /**
+   * دور ششم / مورد ۵ — the ONE and ONLY path that activates the ۱۰۰٪ code.
+   * Closing the window, downloading the picture, sharing it, or coming back to
+   * the app after sharing must never reach this.
+   */
+  const handleClaimClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (Date.now() - lastImageActionAt.current < IMAGE_ACTION_GUARD_MS) return;
+    if (justClaimed) return; // already activated in this session of the window
+    setJustClaimed(onClaim());
   };
 
   const isActivatedState = !!justClaimed || (!eligible && !!activatedAt);
@@ -126,7 +172,7 @@ export const ReferralDiscountModal: React.FC<ReferralDiscountModalProps> = ({
               </div>
             </div>
 
-            <StoryImageComposer />
+            <StoryImageComposer onImageAction={noteImageAction} />
 
             <div className="pt-2 border-t border-[var(--border)] space-y-2">
               <p className="text-xs font-bold">ما به تو اعتماد داریم 🤍</p>
@@ -137,8 +183,9 @@ export const ReferralDiscountModal: React.FC<ReferralDiscountModalProps> = ({
               <button
                 type="button"
                 data-testid="referral-claim-button"
-                onClick={() => setJustClaimed(onClaim())}
-                className="w-full py-3 rounded-2xl bg-[color-mix(in_oklab,var(--accent)_55%,teal_45%)] hover:bg-[color-mix(in_oklab,var(--accent-light)_55%,teal_45%)] text-white font-bold shadow-md transition-all"
+                disabled={imageActionGuard}
+                onClick={handleClaimClick}
+                className="w-full py-3 rounded-2xl bg-[color-mix(in_oklab,var(--accent)_55%,teal_45%)] hover:bg-[color-mix(in_oklab,var(--accent-light)_55%,teal_45%)] disabled:opacity-60 text-white font-bold shadow-md transition-all"
               >
                 معرفی کردم، فعالش کن
               </button>

@@ -1,12 +1,27 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowLeft, X } from 'lucide-react';
+// دور ششم / مورد ۱۰ — Bell / HeartHandshake / Share2 are imported from the very
+// same lucide-react module the home page's three action buttons use, so the
+// shapes in the tour and the shapes on the screen can never differ again. The
+// tour used 🔔 / ❤️ / 🔗 emoji before, and 🔗 (a chain link) looks nothing like
+// the real Share2 icon.
+import { ArrowLeft, X, Bell, HeartHandshake, Share2 } from 'lucide-react';
 import { toPersianDigits } from '../utils/persian';
 
 interface TourStep {
   selector: string;
   title: string;
-  /** One paragraph, or several lines shown one under the other. */
-  description: string | string[];
+  /**
+   * One paragraph, several lines shown one under the other, or — for the
+   * icon-legend step — lines that carry the app's real icons (مورد ۱۰).
+   */
+  description: string | string[] | { icon: React.ReactNode; text: string }[];
+}
+
+/** True for the icon-legend form of `description`. */
+function isIconLines(
+  d: TourStep['description']
+): d is { icon: React.ReactNode; text: string }[] {
+  return Array.isArray(d) && d.length > 0 && typeof d[0] === 'object';
 }
 
 /**
@@ -23,10 +38,21 @@ const STEPS: TourStep[] = [
     // One highlight covering all three home icons at once.
     selector: '[data-tour="home-actions"]',
     title: 'اعلانات، حمایت و معرفی',
+    // مورد ۱۰ — the exact same icon components AND the exact same colors as
+    // the three buttons in [data-tour="home-actions"] on the home page.
     description: [
-      '🔔 زنگوله: یادآوری روزانه و مناسبت‌ها',
-      '❤️ قلب: حمایت از ما با ثبت نظر در فروشگاه',
-      '🔗 اشتراک‌گذاری: معرفی برنامه به دوستان',
+      {
+        icon: <Bell className="w-4 h-4 text-[var(--icon-bell)]" />,
+        text: 'زنگوله: یادآوری روزانه و مناسبت‌ها',
+      },
+      {
+        icon: <HeartHandshake className="w-4 h-4 text-[var(--icon-heart)]" />,
+        text: 'قلب: حمایت از ما با ثبت نظر در فروشگاه',
+      },
+      {
+        icon: <Share2 className="w-4 h-4 text-[var(--accent)]" />,
+        text: 'اشتراک‌گذاری: معرفی برنامه به دوستان',
+      },
     ],
   },
   {
@@ -135,10 +161,22 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({ isActive, onFini
             <X className="w-4 h-4" />
           </button>
         </div>
-        {Array.isArray(step.description) ? (
+        {isIconLines(step.description) ? (
+          <div
+            data-testid="tour-icon-lines"
+            className="text-xs text-[var(--muted)] leading-relaxed mb-3 space-y-1.5"
+          >
+            {step.description.map((line) => (
+              <p key={line.text} className="flex items-center gap-2">
+                <span className="shrink-0">{line.icon}</span>
+                <span>{line.text}</span>
+              </p>
+            ))}
+          </div>
+        ) : Array.isArray(step.description) ? (
           <div className="text-xs text-[var(--muted)] leading-relaxed mb-3 space-y-1">
             {step.description.map((line) => (
-              <p key={line}>{line}</p>
+              <p key={line as string}>{line as string}</p>
             ))}
           </div>
         ) : (

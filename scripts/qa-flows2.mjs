@@ -209,7 +209,10 @@ async function testDiscountWindow(browser) {
   check('مورد۱۹ تصویر آماده با متن دلخواه ساخته شد',
     fs.statSync(path.join(OUT, 'story-custom.png')).size > 20000);
 
-  // Activate → state B
+  // Activate → state B.
+  // دور ششم / مورد ۵ — the activation button is briefly disabled right after a
+  // picture button press (stray-tap guard), so wait for it to come back.
+  await page.waitForTimeout(1100);
   await page.getByTestId('referral-claim-button').click();
   await page.waitForTimeout(600);
   await page.screenshot({ path: path.join(OUT, 'discount-state-b.png'), fullPage: true });
@@ -277,8 +280,7 @@ async function testNotifications(browser) {
   check('مورد۲۰ کادر «پیامی که روی گوشیت می‌بینی» پیام پیش‌فرض را نشان می‌دهد',
     preview.includes('امروز هنوز ذکری نگفتی، می‌خوای با گفتن ذکر، بیشتر به یاد خدا باشی؟ 📿'));
 
-  await page.getByTestId('reminder-custom-toggle').click();
-  await page.waitForTimeout(200);
+  // دور ششم / مورد ۸ — the box is always open now; there is no toggle to click.
   await page.getByTestId('reminder-custom-input').fill('یادت نره امشب صلوات بفرستی 🌿');
   await page.waitForTimeout(300);
   const preview2 = await page.getByTestId('reminder-preview').textContent();

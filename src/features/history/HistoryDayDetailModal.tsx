@@ -13,6 +13,8 @@ interface HistoryDayDetailModalProps {
   log: DailyLog | undefined;
   notebookEntry: NotebookDayEntry | undefined;
   notebookItems: NotebookItemDef[];
+  /** مورد ۱ — full history for the lifetime star/medal line in shared texts. */
+  allDailyLogs: DailyLog[];
   shamsiDateLabel: string;
   onOpenFullDetail: () => void;
 }
@@ -26,13 +28,14 @@ export const HistoryDayDetailModal: React.FC<HistoryDayDetailModalProps> = ({
   log,
   notebookEntry,
   notebookItems,
+  allDailyLogs,
   shamsiDateLabel,
   onOpenFullDetail,
 }) => {
   // مودال خلاصه‌ی تقویم keeps the shorter round-four notebook wording (مورد ۱۳),
   // but still uses the shared smart-options logic (مورد ۱۵).
   const dayShare = useDayShare(
-    { shamsiDateLabel, log, notebookEntry, notebookItems },
+    { shamsiDateLabel, log, notebookEntry, notebookItems, allDailyLogs },
     'summary'
   );
 
@@ -120,7 +123,7 @@ export const HistoryDayDetailModal: React.FC<HistoryDayDetailModalProps> = ({
       <DayShareModal
         isOpen={dayShare.isModalOpen}
         onClose={dayShare.closeModal}
-        data={{ shamsiDateLabel, log, notebookEntry, notebookItems }}
+        data={{ shamsiDateLabel, log, notebookEntry, notebookItems, allDailyLogs }}
         variant="summary"
         options={dayShare.options}
       />

@@ -9,13 +9,27 @@ import {
 import { buildInviteLine, downloadImageFile, shareAppImage } from '../../lib/share';
 import { useToast } from '../../components/ToastProvider';
 
+interface StoryImageComposerProps {
+  /**
+   * دور ششم / مورد ۵ — fired the moment either image button is pressed and
+   * again when its work finishes. The ۱۰۰٪-code window uses it to ignore a
+   * stray tap that lands on «معرفی کردم، فعالش کن» right after the Android
+   * share sheet or the download bar closes. It never activates anything.
+   */
+  onImageAction?: () => void;
+}
+
 /**
  * مورد ۱۹ — the custom-text box, the live preview, and the two buttons that
  * turn the preview into a real 1080×1920 PNG. Shown in BOTH states of the
  * ۱۰۰٪-code window (before and after activation), which is why it's its own
  * component.
+ *
+ * دور ششم / مورد ۵ — NOTHING in this component may touch the ۱۰۰٪-code state.
+ * Downloading or sharing the picture only builds a PNG; activation belongs to
+ * the «معرفی کردم، فعالش کن» button alone.
  */
-export const StoryImageComposer: React.FC = () => {
+export const StoryImageComposer: React.FC<StoryImageComposerProps> = ({ onImageAction }) => {
   const [text, setText] = useState('');
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [busy, setBusy] = useState<null | 'download' | 'share'>(null);
@@ -40,7 +54,11 @@ export const StoryImageComposer: React.FC = () => {
     };
   }, [text]);
 
-  const handleDownload = async () => {
+  const handleDownload = async (e: React.MouseEvent) => {
+    // Never let this click reach anything above it in the tree (مورد ۵).
+    e.preventDefault();
+    e.stopPropagation();
+    onImageAction?.();
     setBusy('download');
     try {
       const blob = await generateStoryImage({ customText: text });
@@ -53,14 +71,23 @@ export const StoryImageComposer: React.FC = () => {
       showToast('متأسفانه تصویر ساخته نشد. یه‌بار دیگه امتحان کن 🌿', { kind: 'info' });
     } finally {
       setBusy(null);
+      onImageAction?.();
     }
   };
 
-  const handleShare = async () => {
+  const handleShare = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onImageAction?.();
     setBusy('share');
     try {
       const blob = await generateStoryImage({ customText: text });
-      const caption = [text.trim(), buildInviteLine()].filter(Boolean).join('\n');
+      // دور ششم / مورد ۳ — the user's own sentence is already drawn ON the
+      // image, so repeating it in the message next to the image was pure
+      // duplication. The caption is now ONLY the invitation line (+ the store
+      // links, which share.ts appends), and it ends with a full stop instead
+      // of a colon while no store has a link yet.
+      const caption = buildInviteLine();
       await shareAppImage(blob, 'zekraram-story.png', caption, {
         onDownloadedInstead: () => showToast('تصویر در گوشی شما دانلود شد.', { kind: 'success' }),
         onFailed: () => showToast('اشتراک‌گذاری انجام نشد، دوباره امتحان کن 🌿', { kind: 'info' }),
@@ -69,6 +96,7 @@ export const StoryImageComposer: React.FC = () => {
       showToast('متأسفانه تصویر ساخته نشد. یه‌بار دیگه امتحان کن 🌿', { kind: 'info' });
     } finally {
       setBusy(null);
+      onImageAction?.();
     }
   };
 
@@ -90,14 +118,25 @@ export const StoryImageComposer: React.FC = () => {
         {toPersianDigits(text.length)} / {toPersianDigits(STORY_TEXT_MAX_LENGTH)}
       </div>
 
-      {previewUrl && (
-        <img
-          data-testid="story-preview"
-          src={previewUrl}
-          alt="پیش‌نمایش تصویر آماده"
-          className="mx-auto w-28 rounded-xl border border-[var(--border)] shadow-sm"
-        />
-      )}
+      {/* دور ششم / مورد ۵ — the preview box keeps its exact size at all times
+          (fixed width + the 1080:1920 aspect ratio), even while a new preview
+          is still decoding. Before this, every re-render briefly collapsed the
+          picture and slid everything below it — including the activation
+          button — up by ~200px, which is how a tap meant for a picture button
+          could land somewhere else entirely. */}
+      <div
+        data-testid="story-preview-box"
+        className="mx-auto w-28 aspect-[1080/1920] rounded-xl border border-[var(--border)] bg-[var(--bg)] overflow-hidden shadow-sm"
+      >
+        {previewUrl && (
+          <img
+            data-testid="story-preview"
+            src={previewUrl}
+            alt="پیش‌نمایش تصویر آماده"
+            className="w-full h-full object-cover"
+          />
+        )}
+      </div>
 
       <div className="grid grid-cols-2 gap-2 pt-1">
         <button

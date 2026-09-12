@@ -28,9 +28,18 @@ export interface TrialGateInfo {
  * ۱۰۰٪ code has pushed the end date out (مورد ۱۸), every label switches to
  * "[عدد] روز دیگه رایگانه" — e.g. «۶۰ روز دیگه رایگانه» on day one — so the
  * countdown never contradicts itself.
+ *
+ * دور ششم / مورد ۶ — `extended` now DEFAULTS to the real stored state rather
+ * than to `false`. Round five's default of `false` is exactly what made the
+ * notebook banner keep saying «این امکان ۳۰ روز رایگانه» while every screen
+ * that passed the flag explicitly said «۶۰ روز دیگه رایگانه». Leaving the
+ * argument out can no longer produce a wrong label.
  */
-export function formatFreeDaysLabel(daysRemaining: number, extended = false): string {
-  if (!extended && daysRemaining >= TRIAL_DAYS) return `${toPersianDigits(TRIAL_DAYS)} روز رایگانه`;
+export function formatFreeDaysLabel(daysRemaining: number, extended?: boolean): string {
+  const isExtended = extended ?? hasFreeExtension();
+  if (!isExtended && daysRemaining >= TRIAL_DAYS) {
+    return `${toPersianDigits(TRIAL_DAYS)} روز رایگانه`;
+  }
   return `${toPersianDigits(Math.max(0, daysRemaining))} روز دیگه رایگانه`;
 }
 

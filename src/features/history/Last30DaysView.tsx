@@ -84,6 +84,7 @@ export const Last30DaysView: React.FC<Last30DaysViewProps> = ({
                 log={log}
                 notebookEntry={entry}
                 notebookItems={notebookItems}
+                allDailyLogs={dailyLogs}
                 onDeleteDay={onDeleteDay}
               />
             ))}

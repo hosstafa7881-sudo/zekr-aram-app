@@ -14,6 +14,8 @@
 import { DailyLog } from './db';
 import { NotebookDayEntry, NotebookItemDef } from '../features/notebook/notebookTypes';
 import { toPersianDigits } from '../utils/persian';
+import { buildStarBadgeLine } from './dhikrShareText';
+import { computeLifetimeTotal, computeStarCount, getTopBadge } from './gamification';
 
 export type DayShareOption = 'dhikr' | 'notebook' | 'both';
 export type DayShareVariant = 'full' | 'summary';
@@ -23,6 +25,30 @@ export interface DayShareData {
   log: DailyLog | undefined;
   notebookEntry: NotebookDayEntry | undefined;
   notebookItems: NotebookItemDef[];
+  /**
+   * دور ششم / مورد ۱ — the user's WHOLE history, needed for the
+   * «⭐ [N] ستاره | [مدال]» line. Stars and the medal are lifetime totals, not
+   * that day's numbers, exactly like the counter page's «ذکرهای امروز» text.
+   * Optional so an old call site can't silently break; the line is simply
+   * omitted when it isn't passed.
+   */
+  allDailyLogs?: DailyLog[];
+}
+
+/**
+ * دور ششم / مورد ۱ — the exact same line the counter page's «ذکرهای امروز»
+ * text uses, built from the very same helper so the two can never drift:
+ *
+ *   ⭐ ۲۲ ستاره | 🥉 مدال برنز
+ *
+ * Returns '' when the user has neither a star nor a medal (no empty line and
+ * no replacement sentence), and only the half that applies when just one of
+ * them exists.
+ */
+export function buildDayStarBadgeLine(data: DayShareData): string {
+  if (!data.allDailyLogs) return '';
+  const lifetimeTotal = computeLifetimeTotal(data.allDailyLogs);
+  return buildStarBadgeLine(computeStarCount(lifetimeTotal), getTopBadge(lifetimeTotal));
 }
 
 /** متن نمایش‌داده‌شده برای روزی که دفترچه دارد ولی هیچ ذکری ندارد (مورد ۱۴). */
@@ -129,10 +155,18 @@ export function buildDayShareText(
   variant: DayShareVariant,
   data: DayShareData
 ): string {
+  // مورد ۱ — the star/medal line rides along with the dhikr part only; the
+  // «فقط دفترچه» option never shows it (stars and medals belong to ذکر).
+  const starBadgeLine = option === 'notebook' ? '' : buildDayStarBadgeLine(data);
+
   if (variant === 'summary') {
-    if (option === 'dhikr') return buildSummaryDhikrText(data);
+    // The summary wording itself is unchanged — this one extra line is the
+    // only addition (مورد ۱).
     if (option === 'notebook') return buildSummaryNotebookText(data);
-    return `${buildSummaryDhikrText(data)}\n\n${buildSummaryNotebookText(data)}`;
+    const summaryBlocks = [buildSummaryDhikrText(data)];
+    if (starBadgeLine) summaryBlocks.push(starBadgeLine);
+    if (option === 'both') summaryBlocks.push(buildSummaryNotebookText(data));
+    return summaryBlocks.join('\n\n');
   }
 
   const blocks: string[] = [];
@@ -150,9 +184,11 @@ export function buildDayShareText(
   } else if (option === 'dhikr') {
     blocks.push(`📿 ذکرهای من — ${data.shamsiDateLabel}`);
     blocks.push(buildDhikrLines(data).join('\n'));
+    if (starBadgeLine) blocks.push(starBadgeLine);
   } else {
     blocks.push(`📿 ذکرها و دفترچه‌ی من — ${data.shamsiDateLabel}`);
     blocks.push(buildDhikrLines(data).join('\n'));
+    if (starBadgeLine) blocks.push(starBadgeLine);
     blocks.push(buildFullNotebookBlock(data, true));
   }
 

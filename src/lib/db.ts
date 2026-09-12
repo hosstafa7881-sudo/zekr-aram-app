@@ -63,7 +63,12 @@ export const DEFAULT_SETTINGS: UserSettings = {
   onboardingSeen: false,
   themeMode: 'day',
   colorPalette: 'green',
-  reminderEnabled: false,
+  // دور ششم / مورد ۷ — the daily-reminder switch starts ON for a brand-new
+  // user and after «بازنشانی کامل», so the time, message and buttons are
+  // visible the first time the tab is opened. It only makes the app WANT to
+  // remind: nothing is shown on the phone until the user also allows
+  // notifications (see the standing guide box in the reminder tab, مورد ۹).
+  reminderEnabled: true,
   reminderTime: '20:00',
   reminderCustomMessage: '',
   occasionReligiousNotifyEnabled: true,
