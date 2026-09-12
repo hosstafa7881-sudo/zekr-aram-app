@@ -9,7 +9,8 @@ import {
 } from '../../lib/db';
 import { toPersianDigits, getShamsiDateInfo } from '../../utils/persian';
 import { computeLifetimeTotal, computeStarCount, getTopBadge } from '../../lib/gamification';
-import { LockedFeatureId } from '../../lib/subscription';
+import { LockedFeatureId, getFreeExtensionUntil } from '../../lib/subscription';
+import { getReferralLastUsed } from '../../lib/discounts';
 import { useTrialGate } from '../../lib/useTrialGate';
 import { NotebookItemDef, NotebookDayEntry } from '../notebook/notebookTypes';
 import { HistorySearchCalendar } from './HistorySearchCalendar';
@@ -108,7 +109,21 @@ export const HistoryBackupView: React.FC<HistoryBackupViewProps> = ({
 
   const handleExportJSON = () => {
     try {
-      const jsonStr = exportBackupJSON(dhikrs, activeDhikrId, dailyLogs, settings, notebookItems, notebookEntries);
+      // مورد ۱۸ — the ۱۰۰٪-code state lives in its own localStorage keys, so it
+      // has to travel with the backup explicitly or a restore would silently
+      // wipe out free days the user had earned.
+      const jsonStr = exportBackupJSON(
+        dhikrs,
+        activeDhikrId,
+        dailyLogs,
+        settings,
+        notebookItems,
+        notebookEntries,
+        {
+          freeExtensionUntil: getFreeExtensionUntil(),
+          referralLastUsedAt: getReferralLastUsed(),
+        }
+      );
       const blob = new Blob([jsonStr], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');

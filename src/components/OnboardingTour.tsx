@@ -5,9 +5,14 @@ import { toPersianDigits } from '../utils/persian';
 interface TourStep {
   selector: string;
   title: string;
-  description: string;
+  /** One paragraph, or several lines shown one under the other. */
+  description: string | string[];
 }
 
+/**
+ * مورد ۲۲ — six steps. The discount buttons are deliberately NOT introduced
+ * here: showing them at first launch would make the app feel paid.
+ */
 const STEPS: TourStep[] = [
   {
     selector: '[data-tour="home-start-button"]',
@@ -15,9 +20,19 @@ const STEPS: TourStep[] = [
     description: 'از همین‌جا می‌توانید ذکر امروزتان را شروع یا ادامه دهید و مجموع ذکرهای امروز را ببینید.',
   },
   {
-    selector: '[data-tour="home-bell"]',
-    title: 'اعلانات و مناسبت‌ها',
-    description: 'با این زنگوله، یادآوری روزانه تنظیم می‌کنید و مناسبت‌های مذهبی نزدیک را می‌بینید.',
+    // One highlight covering all three home icons at once.
+    selector: '[data-tour="home-actions"]',
+    title: 'اعلانات، حمایت و معرفی',
+    description: [
+      '🔔 زنگوله: یادآوری روزانه و مناسبت‌ها',
+      '❤️ قلب: حمایت از ما با ثبت نظر در فروشگاه',
+      '🔗 اشتراک‌گذاری: معرفی برنامه به دوستان',
+    ],
+  },
+  {
+    selector: '[data-tour="home-library"]',
+    title: 'کتابخانهٔ ذکر',
+    description: 'ذکر مورد نظرتان را از اینجا انتخاب کنید یا ذکر دلخواه خودتان را بسازید.',
   },
   {
     selector: '[data-tour="nav-notebook"]',
@@ -120,7 +135,15 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({ isActive, onFini
             <X className="w-4 h-4" />
           </button>
         </div>
-        <p className="text-xs text-[var(--muted)] leading-relaxed mb-3">{step.description}</p>
+        {Array.isArray(step.description) ? (
+          <div className="text-xs text-[var(--muted)] leading-relaxed mb-3 space-y-1">
+            {step.description.map((line) => (
+              <p key={line}>{line}</p>
+            ))}
+          </div>
+        ) : (
+          <p className="text-xs text-[var(--muted)] leading-relaxed mb-3">{step.description}</p>
+        )}
         <div className="flex items-center justify-between">
           <span className="text-[10px] text-[var(--muted)] tabular-nums-fa">
             {toPersianDigits(stepIndex + 1)} / {toPersianDigits(STEPS.length)}

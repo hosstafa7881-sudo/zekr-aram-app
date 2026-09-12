@@ -1,45 +1,65 @@
 import React, { useState } from 'react';
 import { Gift, X } from 'lucide-react';
-import { getShamsiDateInfo } from '../../utils/persian';
-import { REFERRAL_ALREADY_USED_MESSAGE, ReferralGrantResult } from '../../lib/discounts';
-import { DiscountCodeCard } from './DiscountCodeCard';
+import { getShamsiDateInfo, toPersianDigits } from '../../utils/persian';
+import { ReferralGrantResult, getFreeDaysLeft } from '../../lib/discounts';
+import { StoryImageComposer } from './StoryImageComposer';
 
 interface ReferralDiscountModalProps {
   isOpen: boolean;
   onClose: () => void;
   eligible: boolean;
+  /** When the code was last activated (null when never used). */
+  activatedAt: number | null;
   nextEligibleDate: number | null;
   onClaim: () => ReferralGrantResult;
 }
 
-/** «کد تخفیف ۱۰۰ درصدی» button's modal — share-the-app honor system, 180-day cooldown (بخش ت). */
+function shamsi(timestamp: number): string {
+  return getShamsiDateInfo(new Date(timestamp)).formattedFull;
+}
+
+/**
+ * مورد ۱۷ — «کد تخفیف ۱۰۰ درصدی» window, fully rewritten. Two states:
+ *   الف) before activation — how to introduce the app, the ready-made image,
+ *        and the trust-based activation button.
+ *   ب) after activation — when it was activated, when it can be used again
+ *      (exactly 180 days later), how many free days are left, and the same
+ *      image tools again.
+ *
+ * The underlying logic (honour system, once every 180 days) is unchanged; what
+ * changed is the wording, the layout, and that the 30 days now stack on top of
+ * whatever free time was left (مورد ۱۸).
+ */
 export const ReferralDiscountModal: React.FC<ReferralDiscountModalProps> = ({
   isOpen,
   onClose,
   eligible,
+  activatedAt,
   nextEligibleDate,
   onClaim,
 }) => {
-  const [claimedResult, setClaimedResult] = useState<ReferralGrantResult | null>(null);
+  const [justClaimed, setJustClaimed] = useState<ReferralGrantResult | null>(null);
 
   if (!isOpen) return null;
 
   const handleClose = () => {
-    setClaimedResult(null);
+    setJustClaimed(null);
     onClose();
   };
 
-  const handleClaim = () => {
-    setClaimedResult(onClaim());
-  };
+  const isActivatedState = !!justClaimed || (!eligible && !!activatedAt);
+  const activationTime = justClaimed?.activatedAt ?? activatedAt;
+  const nextTime = justClaimed?.nextEligibleAt ?? nextEligibleDate;
+  const freeDaysLeft = getFreeDaysLeft();
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/75 backdrop-blur-sm p-4">
       <div className="relative w-full max-w-sm bg-[var(--surface)] border border-[var(--accent)]/40 rounded-3xl p-5 shadow-2xl max-h-[90vh] overflow-y-auto">
+        {/* Always reachable, even when the content scrolls. */}
         <button
           type="button"
           onClick={handleClose}
-          className="absolute top-3 left-3 p-1.5 rounded-xl text-[var(--muted)] hover:text-[var(--text)]"
+          className="sticky top-0 float-left -mt-1 -ml-1 p-1.5 rounded-xl bg-[var(--surface)] text-[var(--muted)] hover:text-[var(--text)] z-10"
           aria-label="بستن"
         >
           <X className="w-4 h-4" />
@@ -49,39 +69,95 @@ export const ReferralDiscountModal: React.FC<ReferralDiscountModalProps> = ({
           <Gift className="w-6 h-6" />
         </div>
 
-        {claimedResult ? (
-          <DiscountCodeCard
-            message="یک ماه اشتراک کامل رایگان برای شما فعال شد 🎁"
-            percent={100}
-            code={claimedResult.code}
-            expiresAt={claimedResult.proGrantExpiresAt}
-            secondaryAction={{ label: 'متوجه شدم', onClick: handleClose }}
-          />
-        ) : !eligible ? (
-          <p className="text-sm font-bold text-[var(--text)] leading-relaxed text-center">
-            {REFERRAL_ALREADY_USED_MESSAGE(
-              nextEligibleDate ? getShamsiDateInfo(new Date(nextEligibleDate)).formattedFull : ''
+        {isActivatedState ? (
+          <div data-testid="referral-state-activated" className="text-sm text-[var(--text)] leading-relaxed space-y-3 text-right">
+            <p className="font-black text-base text-center">🎁 کد تخفیف ۱۰۰٪</p>
+
+            {activationTime && (
+              <p className="text-xs">
+                کد تخفیف ۱۰۰٪ در تاریخ {shamsi(activationTime)} برات فعال شد 🎁
+                <br />
+                دفعه‌ی بعد، از {nextTime ? shamsi(nextTime) : ''} می‌تونی دوباره ازش استفاده کنی 🌹
+              </p>
             )}
-          </p>
-        ) : (
-          <div className="text-sm text-[var(--text)] leading-relaxed space-y-3 text-center">
-            <p className="font-black text-base">یک ماه اشتراک، کاملاً رایگان 🎁</p>
-            <p>با معرفی ذکرآرام به اطرافیانتون، یک ماه اشتراک کامل رایگان بگیرید!</p>
-            <div className="text-right bg-[var(--bg)] border border-[var(--border)] rounded-2xl p-3.5 space-y-2 text-xs">
-              <p>۱. یکی‌دو اسکرین‌شات از برنامه بگیرید (مثلاً از صفحه‌ی شمارش ذکرتون یا آماری که بهش رسیدید)</p>
-              <p>۲. توی استوری یا یکی از گروه‌هاتون به اشتراک بذارید، همراه با نظر خودتون درباره‌ی برنامه و لینک دانلود از بازار/مایکت</p>
-              <p>۳. دکمه‌ی پایین رو بزنید تا کد تخفیفتون فعال بشه</p>
-            </div>
-            <p className="text-[11px] text-[var(--muted)]">
-              با کلیک روی دکمه‌ی زیر، تأیید می‌کنین که این برنامه رو به اشتراک گذاشتین. کد تخفیفتون همین الان فعال میشه.
+
+            {freeDaysLeft > 0 && (
+              <p data-testid="referral-free-days" className="text-xs font-bold text-[var(--accent)]">
+                از الان تا {toPersianDigits(freeDaysLeft)} روز دیگه، همه‌ی امکانات برنامه برات رایگانه 🌿
+              </p>
+            )}
+
+            <p className="text-xs">
+              اگه هنوز برنامه رو استوری نکردی یا توی گروه دوستانت به اشتراک نذاشتی، می‌تونی همین الان
+              انجامش بدی 😊
             </p>
-            <button
-              type="button"
-              onClick={handleClaim}
-              className="w-full py-3 rounded-2xl bg-[color-mix(in_oklab,var(--accent)_55%,teal_45%)] hover:bg-[color-mix(in_oklab,var(--accent-light)_55%,teal_45%)] text-white font-bold shadow-md transition-all"
-            >
-              به اشتراک گذاشتم ✅
-            </button>
+
+            <div className="pt-1 border-t border-[var(--border)]">
+              <StoryImageComposer />
+            </div>
+          </div>
+        ) : (
+          <div data-testid="referral-state-before" className="text-sm text-[var(--text)] leading-relaxed space-y-3 text-right">
+            <p className="font-black text-base text-center">
+              🎁 یک ماه اشتراک کامل، هدیه‌ی معرفی ذکرآرام
+            </p>
+
+            <p className="text-xs">
+              اگه ذکرآرام به دلت نشسته، توی شبکه‌های اجتماعی (به‌صورت استوری یا پست) یا حتی توی
+              گروه‌های دوستانت معرفیش کن و یک ماه اشتراک کامل رو رایگان هدیه بگیر 🌿
+            </p>
+
+            <p className="text-xs font-bold">دو راه ساده داری:</p>
+
+            <div className="bg-[var(--bg)] border border-[var(--border)] rounded-2xl p-3.5 space-y-3 text-xs">
+              <div>
+                <p className="font-bold">۱. معرفی با تجربه‌ی خودت</p>
+                <p className="mt-0.5">
+                  از یکی دو صفحه‌ی برنامه (مثلاً صفحه‌ی شمارش ذکر یا آماری که بهش رسیدی) اسکرین
+                  بگیر، چند کلمه از تجربه‌ت بنویس و لینک دانلود برنامه رو هم کنارش بذار.
+                </p>
+              </div>
+              <div>
+                <p className="font-bold">۲. راه سریع‌تر</p>
+                <p className="mt-0.5">
+                  اگه وقت یا حوصله‌ش رو نداری، تصویر آماده‌ی برنامه رو از دکمه‌ی زیر دانلود کن و توی
+                  استوری یا گروه‌های دوستانت منتشر کن 🌸
+                </p>
+              </div>
+            </div>
+
+            <StoryImageComposer />
+
+            <div className="pt-2 border-t border-[var(--border)] space-y-2">
+              <p className="text-xs font-bold">ما به تو اعتماد داریم 🤍</p>
+              <p className="text-xs">
+                بعد از این‌که برنامه رو معرفی کردی، دکمه‌ی زیر رو بزن تا کد تخفیفت همین الان فعال
+                بشه 🌸
+              </p>
+              <button
+                type="button"
+                data-testid="referral-claim-button"
+                onClick={() => setJustClaimed(onClaim())}
+                className="w-full py-3 rounded-2xl bg-[color-mix(in_oklab,var(--accent)_55%,teal_45%)] hover:bg-[color-mix(in_oklab,var(--accent-light)_55%,teal_45%)] text-white font-bold shadow-md transition-all"
+              >
+                معرفی کردم، فعالش کن
+              </button>
+            </div>
+
+            <p className="text-[11px] text-[var(--muted)]">
+              این هدیه هر ۱۸۰ روز یک‌بار قابل استفاده‌ست.
+            </p>
+
+            {/* حدیث — calm and respectful, deliberately without any emoji. */}
+            <div className="pt-3 border-t border-[var(--border)] text-center space-y-1">
+              <p className="text-[11px] text-[var(--muted)]">پیامبر اکرم (ص) فرمودند:</p>
+              <p className="text-sm font-bold text-[var(--text)] leading-loose" dir="rtl">
+                «الدَّالُّ عَلَى الْخَيْرِ كَفَاعِلِهِ»
+              </p>
+              <p className="text-[11px] text-[var(--muted)]/85 leading-relaxed">
+                «کسی که به کار خیر راهنمایی کند، مانند انجام‌دهنده‌ی آن است.»
+              </p>
+            </div>
           </div>
         )}
       </div>

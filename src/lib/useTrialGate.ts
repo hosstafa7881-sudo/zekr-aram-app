@@ -6,7 +6,13 @@
 // رایگانه)" vs "واقعاً قفل (ویژه مشترکین)" so every card stays consistent
 // and correct as the trial progresses.
 import { useEffect, useState } from 'react';
-import { FeatureLockState, getFeatureLockState, getTrialDaysRemaining, TRIAL_DAYS } from './subscription';
+import {
+  FeatureLockState,
+  getFeatureLockState,
+  getTrialDaysRemaining,
+  hasFreeExtension,
+  TRIAL_DAYS,
+} from './subscription';
 import { toPersianDigits } from '../utils/persian';
 
 export interface TrialGateInfo {
@@ -17,8 +23,14 @@ export interface TrialGateInfo {
   freeDaysLabel: string;
 }
 
-export function formatFreeDaysLabel(daysRemaining: number): string {
-  if (daysRemaining >= TRIAL_DAYS) return `${toPersianDigits(TRIAL_DAYS)} روز رایگانه`;
+/**
+ * "۳۰ روز رایگانه" only on a plain, untouched day-one trial. As soon as the
+ * ۱۰۰٪ code has pushed the end date out (مورد ۱۸), every label switches to
+ * "[عدد] روز دیگه رایگانه" — e.g. «۶۰ روز دیگه رایگانه» on day one — so the
+ * countdown never contradicts itself.
+ */
+export function formatFreeDaysLabel(daysRemaining: number, extended = false): string {
+  if (!extended && daysRemaining >= TRIAL_DAYS) return `${toPersianDigits(TRIAL_DAYS)} روز رایگانه`;
   return `${toPersianDigits(Math.max(0, daysRemaining))} روز دیگه رایگانه`;
 }
 
@@ -29,7 +41,7 @@ export function getTrialGateInfo(isProUser: boolean): TrialGateInfo {
     state,
     daysRemaining,
     isLocked: state === 'locked',
-    freeDaysLabel: formatFreeDaysLabel(daysRemaining),
+    freeDaysLabel: formatFreeDaysLabel(daysRemaining, hasFreeExtension()),
   };
 }
 

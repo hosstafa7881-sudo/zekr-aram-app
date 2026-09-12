@@ -15,6 +15,7 @@ export const AdPlaceholder: React.FC<AdPlaceholderProps> = ({ isProUser, variant
 
   return (
     <div
+      data-testid="ad-placeholder"
       className={`flex items-center justify-center gap-2 border border-dashed border-[var(--border)] rounded-2xl text-[var(--muted)] text-[11px] ${
         variant === 'banner' ? 'py-3 px-4' : 'py-8 px-4'
       }`}

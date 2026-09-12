@@ -49,7 +49,8 @@ import { NotebookView } from './features/notebook/NotebookView';
 import { PaywallView } from './features/subscription/PaywallView';
 import { useCountDiscountEvents } from './lib/useCountDiscountEvents';
 import { useReferralDiscount } from './lib/useReferralDiscount';
-import { consumeActiveCountDiscountCode } from './lib/discounts';
+import { consumeActiveCountDiscountCode, setReferralLastUsed } from './lib/discounts';
+import { setFreeExtensionUntil } from './lib/subscription';
 import { CountDiscountModal } from './features/discounts/CountDiscountModal';
 import { ReferralDiscountModal } from './features/discounts/ReferralDiscountModal';
 import { DiscountEarnedModal } from './features/discounts/DiscountEarnedModal';
@@ -287,6 +288,15 @@ export function App() {
       setNotebookEntries(payload.notebookEntries);
       saveNotebookEntries(payload.notebookEntries);
     }
+    // مورد ۱۸ — restore the ۱۰۰٪-code state (extended free end date + when the
+    // code was last used) so a restored phone keeps both the earned days and
+    // the ۱۸۰-day cooldown.
+    if (payload.freeExtensionUntil !== undefined) {
+      setFreeExtensionUntil(payload.freeExtensionUntil ?? null);
+    }
+    if (payload.referralLastUsedAt !== undefined) {
+      setReferralLastUsed(payload.referralLastUsedAt ?? null);
+    }
   }, []);
 
   // Hard reset all data
@@ -461,7 +471,10 @@ function MainShell(props: MainShellProps) {
     starEarnedToast,
     dismissStarEarnedToast,
   } = useGamificationEvents(props.dailyLogs, props.todayDateKey);
-  useOccasionNotice(props.todayDateKey);
+  useOccasionNotice(props.todayDateKey, {
+    religiousEnabled: props.settings.occasionReligiousNotifyEnabled,
+    nationalEnabled: props.settings.occasionNationalNotifyEnabled,
+  });
 
   // The star-earned toast is shown anchored above the counter box while the
   // user is actually on the counting page (see CounterView) — everywhere
@@ -481,6 +494,7 @@ function MainShell(props: MainShellProps) {
     reminderTime: props.settings.reminderTime,
     todayDateKey: props.todayDateKey,
     todayHasAnyDhikr,
+    customMessage: props.settings.reminderCustomMessage,
   });
 
   // Two independent discount systems (بخش پ و ت) — see src/lib/discounts.ts.
@@ -500,15 +514,11 @@ function MainShell(props: MainShellProps) {
     countDiscount.refreshActiveCode();
   };
 
-  const handleClaimReferral = () => {
-    const result = referralDiscount.claim();
-    props.onUpdateSettings({
-      ...props.settings,
-      isProUser: true,
-      proGrantExpiresAt: result.proGrantExpiresAt,
-    });
-    return result;
-  };
+  // مورد ۱۸ — the ۱۰۰٪ code now extends the shared free window instead of
+  // granting a separate parallel "Pro" period, so there is nothing to write
+  // into settings here: every lock, badge and countdown reads the same
+  // useTrialGate hook and picks the new end date up on its own.
+  const handleClaimReferral = () => referralDiscount.claim();
 
   // The Notebook tab is paywall-gated — route bottom-nav taps through the
   // gate too (not just the Home page's quick-access card).
@@ -666,6 +676,7 @@ function MainShell(props: MainShellProps) {
         isOpen={isReferralModalOpen}
         onClose={() => setIsReferralModalOpen(false)}
         eligible={referralDiscount.eligible}
+        activatedAt={referralDiscount.activatedAt}
         nextEligibleDate={referralDiscount.nextEligibleDate}
         onClaim={handleClaimReferral}
       />

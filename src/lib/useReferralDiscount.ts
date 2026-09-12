@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import {
+  getReferralLastUsed,
   getReferralNextEligibleDate,
   isReferralEligible,
   markReferralUsedNow,
@@ -12,6 +13,7 @@ export function useReferralDiscount() {
 
   const eligible = isReferralEligible();
   const nextEligibleDate = getReferralNextEligibleDate();
+  const activatedAt = getReferralLastUsed();
 
   const claim = useCallback((): ReferralGrantResult => {
     const result = markReferralUsedNow();
@@ -19,5 +21,5 @@ export function useReferralDiscount() {
     return result;
   }, []);
 
-  return { eligible, nextEligibleDate, claim };
+  return { eligible, nextEligibleDate, activatedAt, claim };
 }

@@ -2,6 +2,8 @@
 // recur correctly every year regardless of the Gregorian/Shamsi date.
 // This list can be freely edited/extended later — it is plain data, no logic.
 
+import { buildOccasionNotice } from '../lib/occasionMessages';
+
 export type OccasionType = 'birth' | 'martyrdom' | 'eid';
 
 export interface ReligiousOccasion {
@@ -51,12 +53,17 @@ export const RELIGIOUS_OCCASIONS: ReligiousOccasion[] = [
   { id: 'nimeh-shaban', hijriMonth: 8, hijriDay: 15, title: 'جشن نیمهٔ شعبان (میلاد امام زمان عج)', personName: 'امام زمان (عج)', type: 'eid', isOfficialHoliday: true },
 ];
 
+/**
+ * مورد ۲۱ — a religious occasion's category follows directly from its `type`:
+ * a martyrdom/رحلت day is a "غم" (تسلیت) day, a میلاد/عید/بعثت day is a
+ * "شادی" (تبریک) day. Deriving it instead of storing a second field means the
+ * two can never disagree when this list is edited later.
+ */
+export function getOccasionMood(occasion: ReligiousOccasion): 'sad' | 'happy' {
+  return occasion.type === 'martyrdom' ? 'sad' : 'happy';
+}
+
+/** Single-occasion convenience wrapper around the shared notice builder. */
 export function getOccasionMessage(occasion: ReligiousOccasion): string {
-  if (occasion.type === 'birth') {
-    return `تبریک می‌گم! امروز میلاد ${occasion.personName || occasion.title} هست ❤️`;
-  }
-  if (occasion.type === 'martyrdom') {
-    return `امروز شهادت ${occasion.personName || occasion.title} رو تسلیت می‌گم 🖤`;
-  }
-  return `${occasion.title} مبارک باد 🌿`;
+  return buildOccasionNotice(getOccasionMood(occasion), [occasion.title]);
 }

@@ -20,6 +20,19 @@ export { CUSTOM_DHIKR_DELETE_CONFIRM_MESSAGE } from './dhikrLimits'; // 8
 
 export { REMINDER_MESSAGE } from './notifications'; // 16
 
+// مورد ۲۰ — reminder tab wording.
+export const REMINDER_EXPLAINER =
+  'هر روز سر ساعتی که انتخاب می‌کنی، اگه هنوز ذکری نگفته باشی، با یه پیام کوچیک، بهت یادآوری میشه 🌿';
+export const REMINDER_EXPLAINER_NOTE = '(اگه قبلش ذکر گفته باشی، پیامی نمیاد.)';
+
+/** Toast after «ثبت یادآوری» — timeLabel is the real saved time in Persian digits, e.g. «۲۱:۳۰». */
+export const REMINDER_SAVED_TOAST = (timeLabel: string) =>
+  `ثبت شد ✅ هر روز ساعت ${timeLabel} یادت میندازیم 🌿`;
+
+/** NEW TEXT (needs the user's confirmation) — shown when notification permission was refused. */
+export const REMINDER_PERMISSION_DENIED_MESSAGE =
+  'برای اینکه یادآوری کار کنه، باید اجازه‌ی نمایش اعلان رو بدی. بدون این اجازه، پیام یادآوری روی گوشیت نمایش داده نمیشه 🌿';
+
 // 3. Streak message — dynamic day count (Persian digits), built at the call
 // site. Wording + sticker updated in round five (مورد ۱۱); the *timing* logic
 // (streak >= 2, once per day) is unchanged.

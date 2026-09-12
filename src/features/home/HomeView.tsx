@@ -143,6 +143,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
       {/* Library quick access */}
       <button
         type="button"
+        data-tour="home-library"
         onClick={onGoToLibrary}
         className="w-full flex items-center gap-2.5 bg-[var(--surface)] border border-[var(--border)] rounded-2xl px-4 py-3.5 hover:border-[var(--accent)]/40 transition-all"
       >
@@ -153,6 +154,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
       {/* Standalone subscribe button */}
       <button
         type="button"
+        data-testid="home-subscribe-button"
         onClick={onGoToPaywall}
         className="w-full py-3.5 rounded-2xl bg-[var(--accent)] hover:bg-[var(--accent-light)] text-white font-bold shadow-md transition-all"
       >
