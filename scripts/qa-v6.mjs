@@ -15,6 +15,7 @@ import { fileURLToPath } from 'node:url';
 import { launchChromium } from './lib/browser.mjs';
 import { serveDist } from './lib/server.mjs';
 import { applySeed, buildSeedState, patchActiveDhikr } from './lib/seed.mjs';
+import { cropTo, imageSize, pixelAt, whiteBoxHeight } from './lib/pixels.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DIST = path.join(ROOT, 'dist');
@@ -274,6 +275,60 @@ async function testImageCaptions(browser) {
     counterShare.text.split('\n')[0]);
   check('مورد۴ب تصویر شمارش همراه همان پیام فرستاده می‌شود',
     counterShare.files.length === 1 && counterShare.files[0].name === 'zekraram-counter.png');
+
+  await context.close();
+}
+
+// ---------------------------------------------------------------------------
+// موارد ۲ / ۴الف — the "no store has a link yet" baseline.
+//
+// This run uses the real, unpatched storeLinks.ts (all three URLs empty), so
+// it proves what the user reported is the DESIGNED behaviour rather than a
+// bug: with no link, the story image's bottom box is deliberately absent and
+// the counter image's promo box has only two lines. scripts/qa-storelinks.mjs
+// then proves both appear correctly the moment a link exists.
+// ---------------------------------------------------------------------------
+async function testNoStoreLinksBaseline(browser) {
+  const state = buildSeedState({ lifetimeTotal: 2200 });
+  const { context, page } = await open(browser, state);
+
+  // Story image
+  await page.getByRole('button', { name: /کد تخفیف ۱۰۰ درصدی/ }).click();
+  await page.waitForTimeout(600);
+  const [storyDl] = await Promise.all([
+    page.waitForEvent('download', { timeout: 40000 }),
+    page.getByTestId('story-download-button').click(),
+  ]);
+  const storyFile = path.join(OUT, 'v6-story-no-links.png');
+  await storyDl.saveAs(storyFile);
+  const isPureWhite = (px) => px[0] >= 252 && px[1] >= 252 && px[2] >= 252;
+  const boxPixel = await pixelAt(context, storyFile, 540, 1500);
+  check('مورد۲ بدون لینک فروشگاه، کادر پایین عمداً کشیده نمی‌شود',
+    !isPureWhite(boxPixel), `rgb(${boxPixel.join(',')}) در (۵۴۰، ۱۵۰۰)`);
+  await cropTo(context, storyFile, path.join(OUT, 'v6-story-bottom-no-links.png'), {
+    x: 40, y: 1400, width: 1000, height: 340,
+  });
+  await page.getByLabel('بستن').first().click();
+  await page.waitForTimeout(300);
+
+  // Counter image
+  await goTab(page, 'شمارنده');
+  await page.getByTestId('counter-share-icon').click();
+  await page.waitForTimeout(250);
+  await page.getByTestId('counter-share-option-image').click();
+  const [counterDl] = await Promise.all([
+    page.waitForEvent('download', { timeout: 40000 }),
+    page.getByTestId('counter-share-submit').click(),
+  ]);
+  const counterFile = path.join(OUT, 'v6-counter-no-links.png');
+  await counterDl.saveAs(counterFile);
+  const promoHeight = await whiteBoxHeight(context, counterFile, 120, 40);
+  check('مورد۴الف بدون لینک فروشگاه، کادر سفید دوخطی است (۲۱۰ پیکسل)',
+    Math.abs(promoHeight - 210) <= 6, `height=${promoHeight}px`);
+  const cSize = await imageSize(context, counterFile);
+  await cropTo(context, counterFile, path.join(OUT, 'v6-counter-promo-no-links.png'), {
+    x: 40, y: cSize.height - 300, width: 1000, height: 270,
+  });
 
   await context.close();
 }
@@ -718,6 +773,7 @@ async function run() {
   const scenarios = [
     ['day share stars', testDayShareStars],
     ['image captions', testImageCaptions],
+    ['no store links baseline', testNoStoreLinksBaseline],
     ['no accidental activation', testNoAccidentalActivation],
     ['trial labels', testTrialLabels],
     ['trial countdown', testTrialCountdown],
