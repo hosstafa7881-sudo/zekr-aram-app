@@ -103,11 +103,27 @@ async function main() {
       notices.some((t) => t.includes(' و ') && t.endsWith('تسلیت می‌گم 🖤')),
       notices.join(' | ') || 'no notice');
 
-    // روزی با هم غم و هم شادی — ۳ ربیع‌الاول
+    // روزی با هم غم و هم شادی — ۳ ربیع‌الاول (اصلاح کاربر: دیگر دو اعلان جدا
+    // نمی‌فرستد؛ یک اعلان خنثی با هر دو عنوان، بدون تسلیت/تبریک)
     const rabi3 = findHijriDate(3, 3);
     notices = await noticesOn(browser, rabi3);
-    check('مورد۲۱ روز دارای هر دو نوع: یک اعلان تسلیت و یک اعلان تبریک جدا',
-      notices.some((t) => t.endsWith('تسلیت می‌گم 🖤')) && notices.some((t) => t.endsWith('تبریک می‌گم ❤️')),
+    check('مورد۲۱ روز دارای هر دو نوع: یک اعلان خنثی واحد با هر دو عنوان',
+      notices.length === 1 &&
+        notices[0].includes(' و ') &&
+        notices[0].endsWith('است 📅') &&
+        !notices[0].includes('تسلیت') &&
+        !notices[0].includes('تبریک'),
+      notices.join(' | ') || 'no notice');
+
+    // نمونه‌ی دوم کاربر — ۷ رجب (میلاد امام موسی کاظم ع + شهادت امام محمدباقر ع)
+    const rajab7 = findHijriDate(7, 7);
+    notices = await noticesOn(browser, rajab7);
+    check('مورد۲۱ ۷ رجب هم همین قانون را می‌گیرد (یک اعلان خنثی)',
+      notices.length === 1 &&
+        notices[0].includes(' و ') &&
+        notices[0].endsWith('است 📅') &&
+        !notices[0].includes('تسلیت') &&
+        !notices[0].includes('تبریک'),
       notices.join(' | ') || 'no notice');
 
     // نوروز — اول فروردین

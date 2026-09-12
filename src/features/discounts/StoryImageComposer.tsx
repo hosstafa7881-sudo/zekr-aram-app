@@ -45,12 +45,12 @@ export const StoryImageComposer: React.FC = () => {
     try {
       const blob = await generateStoryImage({ customText: text });
       downloadImageFile(blob, 'zekraram-story.png');
-      showToast('تصویر آماده دانلود شد. می‌تونی از گالری گوشی استوریش کنی 🌿', {
+      showToast('تصویر روی گوشیت دانلود شد. می‌تونی از گالری استوریش کنی 🌿', {
         kind: 'success',
         durationMs: 5000,
       });
     } catch {
-      showToast('ساخت تصویر در این مرورگر انجام نشد.', { kind: 'info' });
+      showToast('متأسفانه تصویر ساخته نشد. یه‌بار دیگه امتحان کن 🌿', { kind: 'info' });
     } finally {
       setBusy(null);
     }
@@ -63,10 +63,10 @@ export const StoryImageComposer: React.FC = () => {
       const caption = [text.trim(), buildInviteLine()].filter(Boolean).join('\n');
       await shareAppImage(blob, 'zekraram-story.png', caption, {
         onDownloadedInstead: () => showToast('تصویر در گوشی شما دانلود شد.', { kind: 'success' }),
-        onFailed: () => showToast('اشتراک‌گذاری تصویر انجام نشد.', { kind: 'info' }),
+        onFailed: () => showToast('اشتراک‌گذاری انجام نشد، دوباره امتحان کن 🌿', { kind: 'info' }),
       });
     } catch {
-      showToast('ساخت تصویر در این مرورگر انجام نشد.', { kind: 'info' });
+      showToast('متأسفانه تصویر ساخته نشد. یه‌بار دیگه امتحان کن 🌿', { kind: 'info' });
     } finally {
       setBusy(null);
     }

@@ -160,7 +160,7 @@ export const NotificationBellPanel: React.FC<NotificationBellPanelProps> = ({
       setPermission(getNotificationPermission());
       showToast(REMINDER_PERMISSION_DENIED_MESSAGE, { kind: 'info', durationMs: 6000 });
     } else if (result === 'unsupported') {
-      showToast('مرورگر شما از نمایش اعلان پشتیبانی نمی‌کند.', { kind: 'info' });
+      showToast('گوشی یا مرورگرت الان امکان نمایش اعلان رو نداره.', { kind: 'info' });
     }
   };
 
@@ -370,11 +370,6 @@ export const NotificationBellPanel: React.FC<NotificationBellPanelProps> = ({
                     ثبت یادآوری
                   </button>
                 </div>
-
-                <p className="text-[10px] text-[var(--muted)]/80 leading-relaxed">
-                  در نسخه‌ی وب، یادآوری فقط وقتی برنامه باز است ارسال می‌شود. در نسخه‌ی اندرویدی،
-                  یادآوری به‌صورت کامل و در پس‌زمینه کار خواهد کرد.
-                </p>
               </div>
             )}
 

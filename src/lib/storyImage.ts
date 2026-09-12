@@ -187,7 +187,7 @@ export async function renderStoryCanvas(
   canvas.width = Math.round(STORY_WIDTH * scale);
   canvas.height = Math.round(STORY_HEIGHT * scale);
   const ctx = canvas.getContext('2d');
-  if (!ctx) throw new Error('ساخت تصویر در این مرورگر ممکن نیست.');
+  if (!ctx) throw new Error('متأسفانه تصویر ساخته نشد. یه‌بار دیگه امتحان کن 🌿');
   ctx.scale(scale, scale);
 
   drawDottedBackground(ctx);

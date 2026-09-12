@@ -284,7 +284,7 @@ export async function generateCounterImage(input: CounterImageInput): Promise<Bl
   scratch.width = WIDTH;
   scratch.height = SCRATCH_HEIGHT;
   const ctx = scratch.getContext('2d');
-  if (!ctx) throw new Error('ساخت تصویر در این مرورگر ممکن نیست.');
+  if (!ctx) throw new Error('متأسفانه تصویر ساخته نشد. یه‌بار دیگه امتحان کن 🌿');
 
   ctx.fillStyle = theme.bg;
   ctx.fillRect(0, 0, WIDTH, SCRATCH_HEIGHT);

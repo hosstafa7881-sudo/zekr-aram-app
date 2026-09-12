@@ -19,11 +19,17 @@ export interface OccasionNoticeSettings {
 
 /**
  * مورد ۲۱ — builds today's occasion notices. Titles of the SAME category are
- * merged into one notice with «و»; different categories stay separate notices
- * (so a day carrying both a تسلیت and a تبریک occasion sends one of each
- * rather than the app silently picking a winner). Nowruz (1 فروردین) replaces
- * the generic official-day wording with its own greeting, and روزهای ۲ تا ۴
- * فروردین send nothing at all.
+ * merged into one notice with «و». Nowruz (1 فروردین) replaces the generic
+ * official-day wording with its own greeting, and روزهای ۲ تا ۴ فروردین send
+ * nothing at all.
+ *
+ * اصلاح بعد از دور پنجم: وقتی یک روز هم‌زمان مناسبتی از دسته‌ی «غم» و
+ * مناسبتی از دسته‌ی «شادی» دارد، دو اعلان جدا (یکی تسلیت، یکی تبریک) کنار هم
+ * ناهمخوان به‌نظر می‌رسند. به‌جای آن، فقط یک اعلان خنثی با هر دو عنوان و
+ * بدون کلمه‌ی تسلیت/تبریک فرستاده می‌شود — «امروز [X] و [Y] است 📅». این
+ * قانون برای **هر** روزی با این ترکیب در تقویم اعمال می‌شود (نه فقط چند
+ * نمونه‌ی خاص مثل ۳ ربیع‌الاول یا ۷ رجب)، و شامل ترکیب یک مناسبت مذهبی با یک
+ * روز رسمیِ دسته‌ی غم (مثل رحلت امام خمینی (ره)) هم می‌شود.
  */
 export function buildTodaysOccasionNotices(
   settings: OccasionNoticeSettings,
@@ -48,6 +54,15 @@ export function buildTodaysOccasionNotices(
       }
       byMood.set(holiday.mood, [...(byMood.get(holiday.mood) || []), holiday.title]);
     });
+  }
+
+  // غم + شادی هم‌زمان → یک اعلان خنثی واحد (به‌جای دو اعلان جدا و ناهمخوان).
+  const sadTitles = byMood.get('sad');
+  const happyTitles = byMood.get('happy');
+  if (sadTitles && sadTitles.length > 0 && happyTitles && happyTitles.length > 0) {
+    byMood.set('national', [...(byMood.get('national') || []), ...sadTitles, ...happyTitles]);
+    byMood.delete('sad');
+    byMood.delete('happy');
   }
 
   (['sad', 'happy', 'national'] as OccasionMood[]).forEach((mood) => {

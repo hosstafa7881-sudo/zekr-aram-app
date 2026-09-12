@@ -53,11 +53,11 @@ export const CounterShareModal: React.FC<CounterShareModalProps> = ({
       await shareAppImage(blob, 'zekraram-counter.png', caption, {
         onDownloadedInstead: () =>
           showToast('تصویر در گوشی شما دانلود شد.', { kind: 'success' }),
-        onFailed: () => showToast('ساخت یا اشتراک‌گذاری تصویر انجام نشد.', { kind: 'info' }),
+        onFailed: () => showToast('متأسفانه تصویر ساخته نشد. یه‌بار دیگه امتحان کن 🌿', { kind: 'info' }),
       });
       onClose();
     } catch {
-      showToast('ساخت تصویر در این مرورگر انجام نشد.', { kind: 'info' });
+      showToast('متأسفانه تصویر ساخته نشد. یه‌بار دیگه امتحان کن 🌿', { kind: 'info' });
     } finally {
       setIsBusy(false);
     }
