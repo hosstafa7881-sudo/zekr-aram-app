@@ -18,7 +18,7 @@ export const DiscountButtonsRow: React.FC<DiscountButtonsRowProps> = ({
   className = '',
 }) => {
   return (
-    <div className={`grid grid-cols-2 gap-2 ${className}`}>
+    <div data-testid="discount-buttons-row" className={`grid grid-cols-2 gap-2 ${className}`}>
       <button
         type="button"
         onClick={onOpenCountDiscount}

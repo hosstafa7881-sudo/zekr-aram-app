@@ -1,4 +1,5 @@
 import { RELIGIOUS_OCCASIONS, ReligiousOccasion } from '../data/religiousOccasions';
+import { NATIONAL_HOLIDAYS, NationalHoliday } from '../data/nationalHolidays';
 import { HijriDateInfo } from '../utils/hijri';
 import { getShamsiDateInfo, toPersianDigits } from '../utils/persian';
 
@@ -10,6 +11,14 @@ function approxDayOfYear(month: number, day: number): number {
 
 export function getTodaysOccasions(today: HijriDateInfo): ReligiousOccasion[] {
   return RELIGIOUS_OCCASIONS.filter((o) => o.hijriMonth === today.month && o.hijriDay === today.day);
+}
+
+/** Official Iranian holidays that fall on today's SOLAR (Jalali) date — مورد ۲۱'s «روزهای رسمی دیگر». */
+export function getTodaysNationalHolidays(date = new Date()): NationalHoliday[] {
+  const shamsi = getShamsiDateInfo(date);
+  return NATIONAL_HOLIDAYS.filter(
+    (h) => h.jalaliMonth === shamsi.month && h.jalaliDay === shamsi.day
+  );
 }
 
 export interface UpcomingOccasion extends ReligiousOccasion {

@@ -12,6 +12,31 @@
 export const REMINDER_MESSAGE =
   'امروز هنوز ذکری نگفتی، می‌خوای با گفتن ذکر، بیشتر به یاد خدا باشی؟ 📿';
 
+/** مورد ۲۰ — a custom reminder has to fit inside a phone notification. */
+export const REMINDER_MESSAGE_MAX_LENGTH = 100;
+
+/** The message the user will actually see: their own wording when they wrote one, otherwise the default. */
+export function resolveReminderMessage(customMessage?: string | null): string {
+  const trimmed = (customMessage || '').trim();
+  return trimmed.length > 0 ? trimmed : REMINDER_MESSAGE;
+}
+
+/** مورد ۲۰ — «ارسال پیام آزمایشی»: shows one sample notification right now. */
+export async function sendTestNotification(message: string): Promise<'sent' | 'denied' | 'unsupported'> {
+  if (!isNotificationSupported()) return 'unsupported';
+  let permission = getNotificationPermission();
+  if (permission !== 'granted') {
+    permission = await requestNotificationPermission();
+  }
+  if (permission !== 'granted') return 'denied';
+  try {
+    new Notification('ذکرآرام', { body: message, icon: 'icon.svg' });
+    return 'sent';
+  } catch {
+    return 'denied';
+  }
+}
+
 const LAST_NOTIFIED_KEY = 'zikraram_reminder_last_notified_v1';
 
 // In-memory backstop alongside the localStorage flag below. If the
@@ -69,8 +94,10 @@ export function maybeFireDailyReminder(options: {
   reminderTime: string; // "HH:MM"
   todayDateKey: string;
   todayHasAnyDhikr: boolean;
+  /** The user's own wording, when they wrote one (مورد ۲۰). */
+  customMessage?: string;
 }) {
-  const { reminderEnabled, reminderTime, todayDateKey, todayHasAnyDhikr } = options;
+  const { reminderEnabled, reminderTime, todayDateKey, todayHasAnyDhikr, customMessage } = options;
   if (!reminderEnabled) return;
   if (todayHasAnyDhikr) return;
   if (getNotificationPermission() !== 'granted') return;
@@ -88,7 +115,7 @@ export function maybeFireDailyReminder(options: {
     firedInMemoryForDateKey = todayDateKey;
     try {
       new Notification('ذکرآرام', {
-        body: REMINDER_MESSAGE,
+        body: resolveReminderMessage(customMessage),
         icon: 'icon.svg',
       });
     } catch {

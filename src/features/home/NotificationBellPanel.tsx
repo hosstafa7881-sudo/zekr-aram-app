@@ -1,15 +1,37 @@
 import React, { useEffect, useState } from 'react';
-import { X, Bell, CalendarHeart, Clock, Sparkles, Skull, PartyPopper } from 'lucide-react';
+import {
+  X,
+  Bell,
+  CalendarHeart,
+  Clock,
+  Sparkles,
+  Skull,
+  PartyPopper,
+  Pencil,
+  RotateCcw,
+  Send,
+  Check,
+} from 'lucide-react';
 import { UserSettings } from '../../lib/db';
 import { toPersianDigits, getShamsiDateInfo } from '../../utils/persian';
 import { getHijriDateInfo, formatHijriDate } from '../../utils/hijri';
 import { getUpcomingOccasions } from '../../lib/occasions';
 import { OccasionsCalendarGrid } from './OccasionsCalendarGrid';
+import { useToast } from '../../components/ToastProvider';
 import {
-  isNotificationSupported,
+  REMINDER_MESSAGE_MAX_LENGTH,
   getNotificationPermission,
+  isNotificationSupported,
   requestNotificationPermission,
+  resolveReminderMessage,
+  sendTestNotification,
 } from '../../lib/notifications';
+import {
+  REMINDER_EXPLAINER,
+  REMINDER_EXPLAINER_NOTE,
+  REMINDER_PERMISSION_DENIED_MESSAGE,
+  REMINDER_SAVED_TOAST,
+} from '../../lib/messages';
 
 interface NotificationBellPanelProps {
   isOpen: boolean;
@@ -20,6 +42,31 @@ interface NotificationBellPanelProps {
 
 type PanelTab = 'reminder' | 'occasions';
 
+const Toggle: React.FC<{ on: boolean; onToggle: () => void; label: string }> = ({
+  on,
+  onToggle,
+  label,
+}) => (
+  <button
+    type="button"
+    role="switch"
+    aria-checked={on}
+    aria-label={label}
+    onClick={onToggle}
+    className={`shrink-0 w-12 h-7 rounded-full transition-colors p-1 flex items-center ${
+      on
+        ? 'bg-[var(--accent)] justify-start'
+        : 'bg-[var(--bg)] border border-[var(--border)] justify-end'
+    }`}
+  >
+    <span
+      className={`w-5 h-5 rounded-full transition-transform ${
+        on ? 'bg-[var(--bg)]' : 'bg-[var(--muted)]'
+      }`}
+    />
+  </button>
+);
+
 export const NotificationBellPanel: React.FC<NotificationBellPanelProps> = ({
   isOpen,
   onClose,
@@ -28,6 +75,7 @@ export const NotificationBellPanel: React.FC<NotificationBellPanelProps> = ({
 }) => {
   const [tab, setTab] = useState<PanelTab>('reminder');
   const [permission, setPermission] = useState(getNotificationPermission());
+  const { showToast } = useToast();
 
   const [savedHour, savedMinute] = settings.reminderTime.split(':');
   // Local, free-form text mirrors of the hour/minute fields. Keeping these
@@ -40,6 +88,10 @@ export const NotificationBellPanel: React.FC<NotificationBellPanelProps> = ({
   // normalized (padded/clamped) only once, on blur.
   const [hourText, setHourText] = useState(savedHour);
   const [minuteText, setMinuteText] = useState(savedMinute);
+  const [isCustomOpen, setIsCustomOpen] = useState(
+    (settings.reminderCustomMessage || '').length > 0
+  );
+  const [customDraft, setCustomDraft] = useState(settings.reminderCustomMessage || '');
 
   // Re-sync the local free-typing fields from settings each time the panel
   // opens (e.g. after a backup restore changed reminderTime while closed).
@@ -47,6 +99,8 @@ export const NotificationBellPanel: React.FC<NotificationBellPanelProps> = ({
     if (isOpen) {
       setHourText(savedHour);
       setMinuteText(savedMinute);
+      setCustomDraft(settings.reminderCustomMessage || '');
+      setIsCustomOpen((settings.reminderCustomMessage || '').length > 0);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
@@ -56,25 +110,24 @@ export const NotificationBellPanel: React.FC<NotificationBellPanelProps> = ({
   const todayHijri = getHijriDateInfo();
   const todayShamsi = getShamsiDateInfo();
   const upcoming = getUpcomingOccasions(todayHijri);
+  const previewMessage = resolveReminderMessage(customDraft);
 
-  const handleHourChange = (raw: string) => {
-    const digitsOnly = raw.replace(/\D/g, '').slice(0, 2);
-    setHourText(digitsOnly);
-  };
+  const handleHourChange = (raw: string) => setHourText(raw.replace(/\D/g, '').slice(0, 2));
+  const handleMinuteChange = (raw: string) => setMinuteText(raw.replace(/\D/g, '').slice(0, 2));
 
-  const handleMinuteChange = (raw: string) => {
-    const digitsOnly = raw.replace(/\D/g, '').slice(0, 2);
-    setMinuteText(digitsOnly);
-  };
+  const normalizedHour = () =>
+    String(Math.min(23, Math.max(0, parseInt(hourText, 10) || 0))).padStart(2, '0');
+  const normalizedMinute = () =>
+    String(Math.min(59, Math.max(0, parseInt(minuteText, 10) || 0))).padStart(2, '0');
 
   const commitHour = () => {
-    const h = String(Math.min(23, Math.max(0, parseInt(hourText, 10) || 0))).padStart(2, '0');
+    const h = normalizedHour();
     setHourText(h);
     onUpdateSettings({ ...settings, reminderTime: `${h}:${minuteText || savedMinute}` });
   };
 
   const commitMinute = () => {
-    const m = String(Math.min(59, Math.max(0, parseInt(minuteText, 10) || 0))).padStart(2, '0');
+    const m = normalizedMinute();
     setMinuteText(m);
     onUpdateSettings({ ...settings, reminderTime: `${hourText || savedHour}:${m}` });
   };
@@ -92,9 +145,52 @@ export const NotificationBellPanel: React.FC<NotificationBellPanelProps> = ({
     }
   };
 
+  const handleCustomChange = (raw: string) => {
+    setCustomDraft(raw.slice(0, REMINDER_MESSAGE_MAX_LENGTH));
+  };
+
+  const handleResetCustom = () => {
+    setCustomDraft('');
+    onUpdateSettings({ ...settings, reminderCustomMessage: '' });
+  };
+
+  const handleSendTest = async () => {
+    const result = await sendTestNotification(previewMessage);
+    if (result === 'denied') {
+      setPermission(getNotificationPermission());
+      showToast(REMINDER_PERMISSION_DENIED_MESSAGE, { kind: 'info', durationMs: 6000 });
+    } else if (result === 'unsupported') {
+      showToast('گوشی یا مرورگرت الان امکان نمایش اعلان رو نداره.', { kind: 'info' });
+    }
+  };
+
+  const handleSaveReminder = async () => {
+    if (isNotificationSupported() && getNotificationPermission() !== 'granted') {
+      const result = await requestNotificationPermission();
+      setPermission(result);
+      if (result !== 'granted') {
+        showToast(REMINDER_PERMISSION_DENIED_MESSAGE, { kind: 'info', durationMs: 6000 });
+        return;
+      }
+    }
+    const time = `${normalizedHour()}:${normalizedMinute()}`;
+    setHourText(normalizedHour());
+    setMinuteText(normalizedMinute());
+    onUpdateSettings({
+      ...settings,
+      reminderEnabled: true,
+      reminderTime: time,
+      reminderCustomMessage: customDraft.trim(),
+    });
+    showToast(REMINDER_SAVED_TOAST(toPersianDigits(time)), { kind: 'success', durationMs: 5000 });
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/75 backdrop-blur-sm p-0 sm:p-4">
-      <div className="w-full sm:max-w-md bg-[var(--surface)] border border-[var(--border)] sm:rounded-3xl rounded-t-3xl p-5 shadow-2xl max-h-[85vh] overflow-y-auto">
+      <div
+        data-testid="bell-panel"
+        className="w-full sm:max-w-md bg-[var(--surface)] border border-[var(--border)] sm:rounded-3xl rounded-t-3xl p-5 shadow-2xl max-h-[85vh] overflow-y-auto"
+      >
         <div className="flex items-center justify-between pb-3 border-b border-[var(--border)]">
           <div className="flex items-center gap-2">
             <Bell className="w-5 h-5 text-[var(--accent)]" />
@@ -104,6 +200,7 @@ export const NotificationBellPanel: React.FC<NotificationBellPanelProps> = ({
             type="button"
             onClick={onClose}
             className="p-1.5 rounded-xl text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--border)]"
+            aria-label="بستن"
           >
             <X className="w-5 h-5" />
           </button>
@@ -113,6 +210,7 @@ export const NotificationBellPanel: React.FC<NotificationBellPanelProps> = ({
         <div className="flex items-center gap-1.5 mt-4 mb-4">
           <button
             type="button"
+            data-testid="tab-reminder"
             onClick={() => setTab('reminder')}
             className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold border transition-all ${
               tab === 'reminder'
@@ -125,6 +223,7 @@ export const NotificationBellPanel: React.FC<NotificationBellPanelProps> = ({
           </button>
           <button
             type="button"
+            data-testid="tab-occasions"
             onClick={() => setTab('occasions')}
             className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold border transition-all ${
               tab === 'occasions'
@@ -133,74 +232,150 @@ export const NotificationBellPanel: React.FC<NotificationBellPanelProps> = ({
             }`}
           >
             <CalendarHeart className="w-3.5 h-3.5" />
-            مناسبت‌های مذهبی
+            {/* مورد ۲۱الف — no longer «مناسبت‌های مذهبی»: this tab now also
+                covers the official non-religious days. */}
+            مناسبت‌ها
           </button>
         </div>
 
         {tab === 'reminder' && (
           <div className="space-y-4">
+            {/* مورد ۲۰ — the switch stays at the top. While it is off, nothing
+                else is shown; turning it on reveals the rest of the tab. */}
             <div className="flex items-center justify-between bg-[var(--bg)] border border-[var(--border)] rounded-2xl p-3.5">
-              <div>
-                <div className="text-xs font-bold text-[var(--text)]">یادآوری روزانه‌ی ذکر</div>
-                <div className="text-[11px] text-[var(--muted)] mt-0.5 leading-relaxed">
-                  اگه تا ساعت مشخصی هنوز ذکری نگفته باشید، یک یادآوری ملایم دریافت می‌کنید.
-                </div>
+              <div className="flex items-center gap-2">
+                <span className="text-base">🔔</span>
+                <span className="text-xs font-bold text-[var(--text)]">یادآوری روزانه</span>
               </div>
-              <button
-                type="button"
-                onClick={handleToggleReminder}
-                className={`shrink-0 w-12 h-7 rounded-full transition-colors p-1 flex items-center ${
-                  settings.reminderEnabled ? 'bg-[var(--accent)] justify-start' : 'bg-[var(--bg)] border border-[var(--border)] justify-end'
-                }`}
-              >
-                <span
-                  className={`w-5 h-5 rounded-full transition-transform ${
-                    settings.reminderEnabled ? 'bg-[var(--bg)]' : 'bg-[var(--muted)]'
-                  }`}
-                />
-              </button>
+              <Toggle
+                on={settings.reminderEnabled}
+                onToggle={handleToggleReminder}
+                label="یادآوری روزانه"
+              />
             </div>
 
             {settings.reminderEnabled && (
-              <div className="bg-[var(--bg)] border border-[var(--border)] rounded-2xl p-3.5">
-                <label className="block text-xs font-bold text-[var(--text)] mb-2">ساعت یادآوری:</label>
-                {/* دقیقه first in markup so, under RTL, ساعت ends up on the left and دقیقه on the right. */}
-                <div className="flex items-end justify-center gap-2">
-                  <div className="flex flex-col items-center gap-1">
-                    <span className="text-[10px] font-bold text-[var(--muted)]">دقیقه</span>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      pattern="[0-9]*"
-                      value={minuteText}
-                      onChange={(e) => handleMinuteChange(e.target.value)}
-                      onBlur={commitMinute}
-                      className="w-20 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] rounded-xl px-2 py-2.5 text-center text-lg font-bold text-[var(--text)] outline-none tabular-nums-fa"
-                      aria-label="دقیقه"
-                    />
-                  </div>
-                  <span className="text-lg font-bold text-[var(--muted)] pb-2.5">:</span>
-                  <div className="flex flex-col items-center gap-1">
-                    <span className="text-[10px] font-bold text-[var(--muted)]">ساعت</span>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      pattern="[0-9]*"
-                      value={hourText}
-                      onChange={(e) => handleHourChange(e.target.value)}
-                      onBlur={commitHour}
-                      className="w-20 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] rounded-xl px-2 py-2.5 text-center text-lg font-bold text-[var(--text)] outline-none tabular-nums-fa"
-                      aria-label="ساعت"
-                    />
-                  </div>
+              <div data-testid="reminder-body" className="space-y-4">
+                <div className="text-[11px] text-[var(--muted)] leading-relaxed">
+                  <p>{REMINDER_EXPLAINER}</p>
+                  <p className="mt-0.5">{REMINDER_EXPLAINER_NOTE}</p>
                 </div>
-                <p className="text-[10px] text-[var(--muted)] text-center mt-1.5">ساعت (۰ تا ۲۳) و دقیقه (۰ تا ۵۹) را وارد کنید</p>
+
+                <div className="bg-[var(--bg)] border border-[var(--border)] rounded-2xl p-3.5">
+                  {/* دقیقه first in markup so, under RTL, ساعت ends up on the left and دقیقه on the right. */}
+                  <div className="flex items-end justify-center gap-2">
+                    <div className="flex flex-col items-center gap-1">
+                      <span className="text-[10px] font-bold text-[var(--muted)]">دقیقه</span>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        value={minuteText}
+                        onChange={(e) => handleMinuteChange(e.target.value)}
+                        onBlur={commitMinute}
+                        className="w-20 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] rounded-xl px-2 py-2.5 text-center text-lg font-bold text-[var(--text)] outline-none tabular-nums-fa"
+                        aria-label="دقیقه"
+                      />
+                    </div>
+                    <span className="text-lg font-bold text-[var(--muted)] pb-2.5">:</span>
+                    <div className="flex flex-col items-center gap-1">
+                      <span className="text-[10px] font-bold text-[var(--muted)]">ساعت</span>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        value={hourText}
+                        onChange={(e) => handleHourChange(e.target.value)}
+                        onBlur={commitHour}
+                        className="w-20 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] rounded-xl px-2 py-2.5 text-center text-lg font-bold text-[var(--text)] outline-none tabular-nums-fa"
+                        aria-label="ساعت"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-[var(--muted)] text-center mt-1.5">
+                    ساعت (۰ تا ۲۳) و دقیقه (۰ تا ۵۹) را وارد کنید
+                  </p>
+                </div>
+
+                {/* Live preview of the exact message the phone will show. */}
+                <div>
+                  <div className="text-[11px] font-bold text-[var(--text)] mb-1.5">
+                    پیامی که روی گوشیت می‌بینی:
+                  </div>
+                  <p
+                    data-testid="reminder-preview"
+                    className="text-[11px] text-[var(--muted)] leading-relaxed bg-[var(--bg)] border border-[var(--border)] rounded-2xl p-3"
+                  >
+                    «{previewMessage}»
+                  </p>
+                </div>
+
+                <div>
+                  <button
+                    type="button"
+                    data-testid="reminder-custom-toggle"
+                    onClick={() => setIsCustomOpen((v) => !v)}
+                    className="flex items-center gap-1.5 text-xs font-bold text-[var(--accent)]"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                    نوشتن پیام دلخواه
+                  </button>
+
+                  {isCustomOpen && (
+                    <div className="mt-2 space-y-1.5">
+                      <textarea
+                        data-testid="reminder-custom-input"
+                        value={customDraft}
+                        onChange={(e) => handleCustomChange(e.target.value)}
+                        maxLength={REMINDER_MESSAGE_MAX_LENGTH}
+                        rows={3}
+                        placeholder="پیام یادآوری خودت رو اینجا بنویس… 😊"
+                        className="w-full bg-[var(--bg)] border border-[var(--border)] focus:border-[var(--accent)] rounded-2xl px-3 py-2.5 text-xs text-[var(--text)] outline-none leading-relaxed resize-none"
+                      />
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] text-[var(--muted)] tabular-nums-fa">
+                          {toPersianDigits(customDraft.length)} / {toPersianDigits(REMINDER_MESSAGE_MAX_LENGTH)}
+                        </span>
+                        <button
+                          type="button"
+                          data-testid="reminder-custom-reset"
+                          onClick={handleResetCustom}
+                          className="flex items-center gap-1 text-[10px] font-bold text-[var(--muted)] hover:text-[var(--text)]"
+                        >
+                          <RotateCcw className="w-3 h-3" />
+                          برگشت به پیام پیش‌فرض
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 gap-2">
+                  <button
+                    type="button"
+                    data-testid="reminder-test-button"
+                    onClick={handleSendTest}
+                    className="flex items-center justify-center gap-2 py-2.5 rounded-2xl bg-[var(--bg)] border border-[var(--accent)]/40 text-[var(--text)] text-xs font-bold transition-all"
+                  >
+                    <Send className="w-3.5 h-3.5 text-[var(--accent)]" />
+                    ارسال پیام آزمایشی
+                  </button>
+                  <button
+                    type="button"
+                    data-testid="reminder-save-button"
+                    onClick={handleSaveReminder}
+                    className="flex items-center justify-center gap-2 py-2.5 rounded-2xl bg-[var(--accent)] hover:bg-[var(--accent-light)] text-white text-xs font-bold shadow-md transition-all"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    ثبت یادآوری
+                  </button>
+                </div>
               </div>
             )}
 
             {permission === 'denied' && (
               <p className="text-[11px] text-[var(--danger)] leading-relaxed">
-                دسترسی اعلان در مرورگر شما مسدود شده است. برای فعال‌سازی، از تنظیمات مرورگر اجازهٔ اعلان را برای این سایت فعال کنید.
+                {REMINDER_PERMISSION_DENIED_MESSAGE}
               </p>
             )}
           </div>
@@ -208,6 +383,36 @@ export const NotificationBellPanel: React.FC<NotificationBellPanelProps> = ({
 
         {tab === 'occasions' && (
           <div className="space-y-3">
+            {/* مورد ۲۱ب — two notification switches, both on by default. */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between bg-[var(--bg)] border border-[var(--border)] rounded-2xl p-3">
+                <span className="text-xs font-bold text-[var(--text)]">اعلان مناسبت‌های مذهبی</span>
+                <Toggle
+                  on={settings.occasionReligiousNotifyEnabled}
+                  onToggle={() =>
+                    onUpdateSettings({
+                      ...settings,
+                      occasionReligiousNotifyEnabled: !settings.occasionReligiousNotifyEnabled,
+                    })
+                  }
+                  label="اعلان مناسبت‌های مذهبی"
+                />
+              </div>
+              <div className="flex items-center justify-between bg-[var(--bg)] border border-[var(--border)] rounded-2xl p-3">
+                <span className="text-xs font-bold text-[var(--text)]">اعلان روزهای رسمی دیگر</span>
+                <Toggle
+                  on={settings.occasionNationalNotifyEnabled}
+                  onToggle={() =>
+                    onUpdateSettings({
+                      ...settings,
+                      occasionNationalNotifyEnabled: !settings.occasionNationalNotifyEnabled,
+                    })
+                  }
+                  label="اعلان روزهای رسمی دیگر"
+                />
+              </div>
+            </div>
+
             <div className="bg-[var(--accent)]/10 border border-[var(--accent)]/30 rounded-2xl p-3 text-center">
               <div className="text-[11px] text-[var(--muted)] mb-0.5">امروز</div>
               <div className="text-sm font-bold text-[var(--text)]">

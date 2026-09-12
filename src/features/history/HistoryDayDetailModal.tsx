@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { DailyLog } from '../../lib/db';
 import { NotebookItemDef, NotebookDayEntry } from '../notebook/notebookTypes';
 import { toPersianDigits } from '../../utils/persian';
 import { DayShareModal } from './DayShareModal';
+import { useDayShare } from './useDayShare';
 import { NO_DATA_FOR_DAY_MESSAGE } from '../../lib/messages';
 import { X, Share2, CheckCircle2, ChevronLeft } from 'lucide-react';
 
@@ -28,7 +29,12 @@ export const HistoryDayDetailModal: React.FC<HistoryDayDetailModalProps> = ({
   shamsiDateLabel,
   onOpenFullDetail,
 }) => {
-  const [shareOpen, setShareOpen] = useState(false);
+  // مودال خلاصه‌ی تقویم keeps the shorter round-four notebook wording (مورد ۱۳),
+  // but still uses the shared smart-options logic (مورد ۱۵).
+  const dayShare = useDayShare(
+    { shamsiDateLabel, log, notebookEntry, notebookItems },
+    'summary'
+  );
 
   if (!isOpen) return null;
 
@@ -96,7 +102,7 @@ export const HistoryDayDetailModal: React.FC<HistoryDayDetailModalProps> = ({
               </button>
               <button
                 type="button"
-                onClick={() => setShareOpen(true)}
+                onClick={dayShare.start}
                 className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-[var(--accent)] hover:bg-[var(--accent-light)] text-white text-xs font-bold transition-all"
               >
                 <Share2 className="w-3.5 h-3.5" />
@@ -112,12 +118,11 @@ export const HistoryDayDetailModal: React.FC<HistoryDayDetailModalProps> = ({
       </div>
 
       <DayShareModal
-        isOpen={shareOpen}
-        onClose={() => setShareOpen(false)}
-        shamsiDateLabel={shamsiDateLabel}
-        log={log}
-        notebookEntry={notebookEntry}
-        notebookItems={notebookItems}
+        isOpen={dayShare.isModalOpen}
+        onClose={dayShare.closeModal}
+        data={{ shamsiDateLabel, log, notebookEntry, notebookItems }}
+        variant="summary"
+        options={dayShare.options}
       />
     </div>
   );

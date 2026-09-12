@@ -20,6 +20,12 @@ export interface UserSettings {
   colorPalette: string;
   reminderEnabled: boolean;
   reminderTime: string;
+  /** مورد ۲۰ — the user's own reminder wording ('' means "use the default message"). Max 100 characters so it fits in a phone notification. */
+  reminderCustomMessage: string;
+  /** مورد ۲۱ — «اعلان مناسبت‌های مذهبی» switch. */
+  occasionReligiousNotifyEnabled: boolean;
+  /** مورد ۲۱ — «اعلان روزهای رسمی دیگر» switch. */
+  occasionNationalNotifyEnabled: boolean;
   isProUser: boolean;
   /** Timestamp until which a temporary discount-granted Pro access lasts (referral discount). Null when there's no active temporary grant (a real/simulated purchase leaves this null and isProUser permanently true). */
   proGrantExpiresAt: number | null;
@@ -34,6 +40,10 @@ export interface BackupPayload {
   settings: UserSettings;
   notebookItems?: import('../features/notebook/notebookTypes').NotebookItemDef[];
   notebookEntries?: import('../features/notebook/notebookTypes').NotebookDayEntry[];
+  /** مورد ۱۸ — the (possibly extended) end of the user's free access, so restoring a backup doesn't silently throw away days they earned with the ۱۰۰٪ code. */
+  freeExtensionUntil?: number | null;
+  /** مورد ۱۸ — when the ۱۰۰٪ code was last used, so the ۱۸۰-day cooldown survives a restore. */
+  referralLastUsedAt?: number | null;
 }
 
 const STORAGE_KEYS = {
@@ -55,6 +65,9 @@ export const DEFAULT_SETTINGS: UserSettings = {
   colorPalette: 'green',
   reminderEnabled: false,
   reminderTime: '20:00',
+  reminderCustomMessage: '',
+  occasionReligiousNotifyEnabled: true,
+  occasionNationalNotifyEnabled: true,
   isProUser: false,
   proGrantExpiresAt: null,
 };
@@ -242,10 +255,11 @@ export function exportBackupJSON(
   dailyLogs: DailyLog[],
   settings: UserSettings,
   notebookItems?: import('../features/notebook/notebookTypes').NotebookItemDef[],
-  notebookEntries?: import('../features/notebook/notebookTypes').NotebookDayEntry[]
+  notebookEntries?: import('../features/notebook/notebookTypes').NotebookDayEntry[],
+  extras?: { freeExtensionUntil: number | null; referralLastUsedAt: number | null }
 ): string {
   const payload: BackupPayload = {
-    version: 2,
+    version: 3,
     exportedAt: new Date().toISOString(),
     dhikrs,
     activeDhikrId,
@@ -253,6 +267,8 @@ export function exportBackupJSON(
     settings,
     notebookItems,
     notebookEntries,
+    freeExtensionUntil: extras?.freeExtensionUntil ?? null,
+    referralLastUsedAt: extras?.referralLastUsedAt ?? null,
   };
   return JSON.stringify(payload, null, 2);
 }
@@ -274,5 +290,9 @@ export function parseAndValidateBackupJSON(jsonString: string): BackupPayload {
     settings: { ...DEFAULT_SETTINGS, ...(parsed.settings || {}) },
     notebookItems: Array.isArray(parsed.notebookItems) ? parsed.notebookItems : undefined,
     notebookEntries: Array.isArray(parsed.notebookEntries) ? parsed.notebookEntries : undefined,
+    freeExtensionUntil:
+      typeof parsed.freeExtensionUntil === 'number' ? parsed.freeExtensionUntil : null,
+    referralLastUsedAt:
+      typeof parsed.referralLastUsedAt === 'number' ? parsed.referralLastUsedAt : null,
   };
 }

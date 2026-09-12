@@ -25,7 +25,9 @@ import { OnboardingTour } from './components/OnboardingTour';
 import { useGamificationEvents } from './lib/useGamificationEvents';
 import { useOccasionNotice } from './lib/useOccasionNotice';
 import { useDailyReminder } from './lib/useDailyReminder';
+import { useAppUpdate } from './lib/useAppUpdate';
 import { CelebrationModal } from './features/gamification/CelebrationModal';
+import { MedalEarnedModal } from './features/gamification/MedalEarnedModal';
 import {
   NotebookItemDef,
   NotebookDayEntry,
@@ -37,7 +39,6 @@ import {
   saveNotebookEntries,
   createEmptyEntry,
 } from './features/notebook/notebookStorage';
-import { AppHeader } from './components/AppHeader';
 import { BottomNav, AppTab } from './components/BottomNav';
 import { CounterView } from './features/counter/CounterView';
 import { DhikrLibraryView } from './features/dhikrs/DhikrLibraryView';
@@ -48,12 +49,16 @@ import { NotebookView } from './features/notebook/NotebookView';
 import { PaywallView } from './features/subscription/PaywallView';
 import { useCountDiscountEvents } from './lib/useCountDiscountEvents';
 import { useReferralDiscount } from './lib/useReferralDiscount';
-import { consumeActiveCountDiscountCode } from './lib/discounts';
+import { consumeActiveCountDiscountCode, setReferralLastUsed } from './lib/discounts';
+import { setFreeExtensionUntil } from './lib/subscription';
 import { CountDiscountModal } from './features/discounts/CountDiscountModal';
 import { ReferralDiscountModal } from './features/discounts/ReferralDiscountModal';
 import { DiscountEarnedModal } from './features/discounts/DiscountEarnedModal';
 
 export function App() {
+  // مورد ۲ب — self-updating build check (see useAppUpdate.ts).
+  useAppUpdate();
+
   const [dhikrs, setDhikrs] = useState<DhikrItem[]>(() => loadDhikrs());
   const [activeDhikrId, setActiveDhikrId] = useState<string>(() =>
     loadActiveDhikrId(loadDhikrs())
@@ -283,6 +288,15 @@ export function App() {
       setNotebookEntries(payload.notebookEntries);
       saveNotebookEntries(payload.notebookEntries);
     }
+    // مورد ۱۸ — restore the ۱۰۰٪-code state (extended free end date + when the
+    // code was last used) so a restored phone keeps both the earned days and
+    // the ۱۸۰-day cooldown.
+    if (payload.freeExtensionUntil !== undefined) {
+      setFreeExtensionUntil(payload.freeExtensionUntil ?? null);
+    }
+    if (payload.referralLastUsedAt !== undefined) {
+      setReferralLastUsed(payload.referralLastUsedAt ?? null);
+    }
   }, []);
 
   // Hard reset all data
@@ -449,9 +463,18 @@ function MainShell(props: MainShellProps) {
   const { guard } = useFeatureGate();
   const { showToast } = useToast();
 
-  const { currentCelebration, dismissCelebration, starEarnedToast, dismissStarEarnedToast } =
-    useGamificationEvents(props.dailyLogs, props.todayDateKey);
-  useOccasionNotice(props.todayDateKey);
+  const {
+    medalEarned,
+    dismissMedalEarned,
+    recordCelebration,
+    dismissRecordCelebration,
+    starEarnedToast,
+    dismissStarEarnedToast,
+  } = useGamificationEvents(props.dailyLogs, props.todayDateKey);
+  useOccasionNotice(props.todayDateKey, {
+    religiousEnabled: props.settings.occasionReligiousNotifyEnabled,
+    nationalEnabled: props.settings.occasionNationalNotifyEnabled,
+  });
 
   // The star-earned toast is shown anchored above the counter box while the
   // user is actually on the counting page (see CounterView) — everywhere
@@ -471,6 +494,7 @@ function MainShell(props: MainShellProps) {
     reminderTime: props.settings.reminderTime,
     todayDateKey: props.todayDateKey,
     todayHasAnyDhikr,
+    customMessage: props.settings.reminderCustomMessage,
   });
 
   // Two independent discount systems (بخش پ و ت) — see src/lib/discounts.ts.
@@ -490,15 +514,11 @@ function MainShell(props: MainShellProps) {
     countDiscount.refreshActiveCode();
   };
 
-  const handleClaimReferral = () => {
-    const result = referralDiscount.claim();
-    props.onUpdateSettings({
-      ...props.settings,
-      isProUser: true,
-      proGrantExpiresAt: result.proGrantExpiresAt,
-    });
-    return result;
-  };
+  // مورد ۱۸ — the ۱۰۰٪ code now extends the shared free window instead of
+  // granting a separate parallel "Pro" period, so there is nothing to write
+  // into settings here: every lock, badge and countdown reads the same
+  // useTrialGate hook and picks the new end date up on its own.
+  const handleClaimReferral = () => referralDiscount.claim();
 
   // The Notebook tab is paywall-gated — route bottom-nav taps through the
   // gate too (not just the Home page's quick-access card).
@@ -512,8 +532,10 @@ function MainShell(props: MainShellProps) {
 
   return (
     <div className="min-h-screen bg-[var(--bg)] text-[var(--text)] flex flex-col justify-between antialiased">
-      <AppHeader />
-
+      {/* مورد ۱ — there is deliberately NO header bar here. The «ذکرآرام»
+          wordmark was removed in round four, and round five removes the empty
+          45px strip it left behind as well, so every page's own content starts
+          right at the top of the screen. */}
       <main className="flex-1 flex flex-col">
         {props.activeTab === 'home' && (
           <HomeView
@@ -541,6 +563,8 @@ function MainShell(props: MainShellProps) {
             onOpenLibraryModal={() => props.setActiveTab('library')}
             starEarnedToast={starEarnedToast}
             onDismissStarEarnedToast={dismissStarEarnedToast}
+            todayDateKey={props.todayDateKey}
+            countingBlocked={!!medalEarned}
             activeCountDiscount={countDiscount.activeCode}
             onOpenCountDiscount={() => setIsCountDiscountModalOpen(true)}
             onOpenReferralDiscount={() => setIsReferralModalOpen(true)}
@@ -609,13 +633,24 @@ function MainShell(props: MainShellProps) {
 
       <BottomNav activeTab={props.activeTab} onChangeTab={handleChangeTab} />
 
-      {currentCelebration && (
+      {/* مورد ۸ — medals get their own popup with a tap guard; the
+          record-broken celebration keeps the previous modal untouched. */}
+      {medalEarned && (
+        <MedalEarnedModal
+          badge={medalEarned}
+          dailyLogs={props.dailyLogs}
+          todayDateKey={props.todayDateKey}
+          onClose={dismissMedalEarned}
+        />
+      )}
+
+      {recordCelebration && (
         <CelebrationModal
           isOpen
-          emoji={currentCelebration.emoji}
-          message={currentCelebration.message}
-          shareText={currentCelebration.shareText}
-          onClose={dismissCelebration}
+          emoji={recordCelebration.emoji}
+          message={recordCelebration.message}
+          shareText={recordCelebration.shareText}
+          onClose={dismissRecordCelebration}
         />
       )}
 
@@ -641,6 +676,7 @@ function MainShell(props: MainShellProps) {
         isOpen={isReferralModalOpen}
         onClose={() => setIsReferralModalOpen(false)}
         eligible={referralDiscount.eligible}
+        activatedAt={referralDiscount.activatedAt}
         nextEligibleDate={referralDiscount.nextEligibleDate}
         onClaim={handleClaimReferral}
       />

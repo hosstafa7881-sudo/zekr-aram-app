@@ -8,6 +8,7 @@
 
 import { DailyLog } from './db';
 import { getShamsiDateInfo } from '../utils/persian';
+import { extendFreeAccessByDays, getEffectiveFreeEndDate } from './subscription';
 
 // ---------------------------------------------------------------------------
 // بخش ب — multi-SKU monthly pricing (display-only; not wired to a real store
@@ -215,20 +216,43 @@ export function getReferralNextEligibleDate(): number | null {
 
 export interface ReferralGrantResult {
   code: string;
-  proGrantExpiresAt: number;
+  /** When the code was activated (مورد ۱۷ shows this date). */
+  activatedAt: number;
+  /** The NEW end of the user's free access after adding 30 days to whatever was left (مورد ۱۸). */
+  freeEndDate: number;
+  /** When the code becomes usable again — exactly 180 days after activation. */
+  nextEligibleAt: number;
 }
 
-/** Marks the referral as used right now and returns a symbolic code + the Pro-access expiry (30 days, exactly like a trial extension) for the caller to apply to settings. */
-export function markReferralUsedNow(now = Date.now()): ReferralGrantResult {
+export function setReferralLastUsed(timestamp: number | null) {
   try {
-    localStorage.setItem(REFERRAL_LAST_USED_KEY, String(now));
+    if (timestamp === null) localStorage.removeItem(REFERRAL_LAST_USED_KEY);
+    else localStorage.setItem(REFERRAL_LAST_USED_KEY, String(timestamp));
   } catch {
     // Ignore
   }
+}
+
+/**
+ * Marks the referral as used right now and stacks its 30 free days on top of
+ * whatever free time the user still had (مورد ۱۸ — e.g. 28 days left + 30 =
+ * 58). Everything about locking and the countdown keeps running through the
+ * shared trial gate; there is no separate parallel timer.
+ */
+export function markReferralUsedNow(now = Date.now()): ReferralGrantResult {
+  setReferralLastUsed(now);
+  const freeEndDate = extendFreeAccessByDays(REFERRAL_GRANT_DAYS, now);
   return {
     code: generateDiscountCode(),
-    proGrantExpiresAt: now + REFERRAL_GRANT_DAYS * DAY_MS,
+    activatedAt: now,
+    freeEndDate,
+    nextEligibleAt: now + REFERRAL_COOLDOWN_DAYS * DAY_MS,
   };
+}
+
+/** Whole days left in the current free window — used by مورد ۱۷'s «از الان تا [X] روز دیگه…» line. */
+export function getFreeDaysLeft(now = Date.now()): number {
+  return Math.max(0, Math.ceil((getEffectiveFreeEndDate() - now) / DAY_MS));
 }
 
 export const REFERRAL_ALREADY_USED_MESSAGE = (nextEligibleDateLabel: string) =>
