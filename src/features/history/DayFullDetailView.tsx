@@ -13,6 +13,8 @@ interface DayFullDetailViewProps {
   log: DailyLog | undefined;
   notebookEntry: NotebookDayEntry | undefined;
   notebookItems: NotebookItemDef[];
+  /** مورد ۱ — full history for the lifetime star/medal line in shared texts. */
+  allDailyLogs: DailyLog[];
   onDeleteDay: (dateKey: string) => void;
 }
 
@@ -25,6 +27,7 @@ export const DayFullDetailView: React.FC<DayFullDetailViewProps> = ({
   log,
   notebookEntry,
   notebookItems,
+  allDailyLogs,
   onDeleteDay,
 }) => {
   if (!isOpen) return null;
@@ -61,6 +64,7 @@ export const DayFullDetailView: React.FC<DayFullDetailViewProps> = ({
             log={log}
             notebookEntry={notebookEntry}
             notebookItems={notebookItems}
+            allDailyLogs={allDailyLogs}
             onDeleteDay={onDeleteDay}
             onDeleted={onClose}
           />

@@ -123,6 +123,7 @@ export const HistorySearchCalendar: React.FC<HistorySearchCalendarProps> = ({
         log={selectedDateKey ? logByKey.get(selectedDateKey) : undefined}
         notebookEntry={selectedDateKey ? notebookByKey.get(selectedDateKey) : undefined}
         notebookItems={notebookItems}
+        allDailyLogs={dailyLogs}
         shamsiDateLabel={selectedDateKey ? formatFullShamsiDate(new Date(`${selectedDateKey}T00:00:00`)) : ''}
         onOpenFullDetail={() => setIsFullDetailOpen(true)}
       />
@@ -138,6 +139,7 @@ export const HistorySearchCalendar: React.FC<HistorySearchCalendarProps> = ({
         log={selectedDateKey ? logByKey.get(selectedDateKey) : undefined}
         notebookEntry={selectedDateKey ? notebookByKey.get(selectedDateKey) : undefined}
         notebookItems={notebookItems}
+        allDailyLogs={dailyLogs}
         onDeleteDay={onDeleteDay}
       />
     </div>

@@ -17,6 +17,7 @@ import { fileURLToPath } from 'node:url';
 import { launchChromium } from './lib/browser.mjs';
 import { serveDist } from './lib/server.mjs';
 import { applySeed, buildSeedState, patchActiveDhikr } from './lib/seed.mjs';
+import { cropTo, imageSize, pixelAt, whiteBoxHeight } from './lib/pixels.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DIST = path.join(ROOT, 'dist');
@@ -86,9 +87,28 @@ async function run() {
       page.waitForEvent('download', { timeout: 30000 }),
       page.getByTestId('counter-share-submit').click(),
     ]);
-    await counterDl.saveAs(path.join(OUT, 'counter-image-with-links.png'));
+    const counterFile = path.join(OUT, 'counter-image-with-links.png');
+    await counterDl.saveAs(counterFile);
     check('مورد۶ تصویر شمارش با لینک فروشگاه ساخته شد',
-      fs.statSync(path.join(OUT, 'counter-image-with-links.png')).size > 10000);
+      fs.statSync(counterFile).size > 10000);
+
+    // دور ششم / مورد ۴الف — the white promo box that replaces the reset row
+    // must carry THREE lines once a store has a link («ذکرآرام» + tagline +
+    // «دانلود از …»), which makes it 280px tall instead of 210px. Measuring
+    // the real white run in the produced PNG proves the third line's row was
+    // actually laid out, not just that the code path exists.
+    const counterSize = await imageSize(context, counterFile);
+    // Scan at x=120: inside the box but well clear of its centred text, so a
+    // glyph never breaks the white run being measured.
+    const promoHeight = await whiteBoxHeight(context, counterFile, 120, 40);
+    check('مورد۴الف کادر سفید تصویر شمارش سه‌خطی است (۲۸۰ پیکسل، نه ۲۱۰)',
+      Math.abs(promoHeight - 280) <= 6, `height=${promoHeight}px`);
+    await cropTo(context, counterFile, path.join(OUT, 'v6-counter-promo-box.png'), {
+      x: 40,
+      y: counterSize.height - 350,
+      width: 1000,
+      height: 320,
+    });
 
     // مورد ۱۹ — story image with the bottom box + a REAL QR code.
     await page.getByRole('button', { name: 'خانه', exact: true }).first().click();
@@ -103,6 +123,26 @@ async function run() {
     await storyDl.saveAs(storyFile);
     check('مورد۱۹ تصویر استوری با کادر فروشگاه‌ها ساخته شد',
       fs.statSync(storyFile).size > 20000);
+
+    // دور ششم / مورد ۲ — the bottom white box (store names + QR) really is
+    // painted at 1420..1720 on the 1080×1920 canvas. A pixel in the middle of
+    // it is pure white; without any store link that same pixel is the dotted
+    // green background instead.
+    const boxPixel = await pixelAt(context, storyFile, 540, 1500);
+    const isPureWhite = (px) => px[0] >= 252 && px[1] >= 252 && px[2] >= 252;
+    check('مورد۲ کادر سفید پایین تصویر استوری واقعاً کشیده شده',
+      isPureWhite(boxPixel),
+      `rgb(${boxPixel.join(',')}) در (۵۴۰، ۱۵۰۰)`);
+    const outsideBox = await pixelAt(context, storyFile, 540, 1380);
+    check('مورد۲ بالای کادر همچنان پس‌زمینه‌ی سبز است (کادر بیش از حد بزرگ نشده)',
+      !isPureWhite(outsideBox),
+      `rgb(${outsideBox.join(',')})`);
+    await cropTo(context, storyFile, path.join(OUT, 'v6-story-bottom-box.png'), {
+      x: 40,
+      y: 1400,
+      width: 1000,
+      height: 340,
+    });
 
     // Decode the QR straight out of the produced PNG.
     const decoder = await context.newPage();

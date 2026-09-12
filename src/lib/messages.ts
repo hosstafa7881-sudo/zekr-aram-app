@@ -29,6 +29,19 @@ export const REMINDER_EXPLAINER_NOTE = '(اگه قبلش ذکر گفته باش�
 export const REMINDER_SAVED_TOAST = (timeLabel: string) =>
   `ثبت شد ✅ هر روز ساعت ${timeLabel} یادت میندازیم 🌿`;
 
+/**
+ * دور ششم / مورد ۹ — the standing guide box in the «یادآوری روزانه» tab. It is
+ * ALWAYS shown, whether the reminder switch is on or off, because a reminder
+ * the phone itself blocks looks to the user like a broken feature.
+ * (After the Capacitor build we will be able to read the real notification
+ * state and show this only when notifications are off.)
+ */
+export const REMINDER_PHONE_PERMISSION_GUIDE = [
+  'برای اینکه یادآوری روزانه واقعاً به گوشیت برسه، باید اعلان‌های «ذکرآرام» توی گوشیت روشن باشه.',
+  'اگه هنوز روشن نکردی: تنظیمات گوشی ⟵ اعلان‌ها ⟵ ذکرآرام ⟵ روشن کردن اعلان.',
+  '(مسیر دقیق ممکنه بسته به مدل گوشی کمی فرق کنه.)',
+];
+
 /** NEW TEXT (needs the user's confirmation) — shown when notification permission was refused. */
 export const REMINDER_PERMISSION_DENIED_MESSAGE =
   'برای اینکه یادآوری کار کنه، باید اجازه‌ی نمایش اعلان رو بدی. بدون این اجازه، پیام یادآوری روی گوشیت نمایش داده نمیشه 🌿';

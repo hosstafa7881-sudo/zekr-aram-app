@@ -2,8 +2,7 @@ import React from 'react';
 import { UserSettings } from '../../lib/db';
 import { TasbihIcon } from '../../components/TasbihIcon';
 import { useToast } from '../../components/ToastProvider';
-import { getFeatureLockState, getTrialDaysRemaining } from '../../lib/subscription';
-import { formatFreeDaysLabel } from '../../lib/useTrialGate';
+import { useTrialGate } from '../../lib/useTrialGate';
 import { PAYWALL_TRIAL_BANNER } from '../../lib/messages';
 import { ActiveDiscountCode, getSkuForDiscountPercent, MONTHLY_PRICING_SKUS } from '../../lib/discounts';
 import { toPersianDigits } from '../../utils/persian';
@@ -77,7 +76,10 @@ export const PaywallView: React.FC<PaywallViewProps> = ({
     );
   }
 
-  const lockState = getFeatureLockState(settings.isProUser);
+  // دور ششم / مورد ۶ — one shared source for both the lock state and the
+  // «[عدد] روز دیگه رایگانه» wording.
+  const trialGate = useTrialGate(settings.isProUser);
+  const lockState = trialGate.state;
 
   return (
     <div className="flex flex-col flex-1 w-full max-w-md mx-auto px-4 pt-4 pb-8">
@@ -99,7 +101,7 @@ export const PaywallView: React.FC<PaywallViewProps> = ({
 
       {lockState !== 'locked' && (
         <div className="bg-[var(--accent)]/10 border border-[var(--accent)]/30 rounded-2xl px-4 py-2.5 text-xs font-bold text-[var(--text)] text-center mb-4">
-          {PAYWALL_TRIAL_BANNER(formatFreeDaysLabel(getTrialDaysRemaining()))}
+          {PAYWALL_TRIAL_BANNER(trialGate.freeDaysLabel)}
         </div>
       )}
 

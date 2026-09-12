@@ -2,13 +2,12 @@ import React, { createContext, useCallback, useContext, useState } from 'react';
 import {
   LockedFeatureId,
   getFeatureLockState,
-  getTrialDaysRemaining,
   wasWarningShownToday,
   markWarningShownToday,
   TRIAL_WARNING_MESSAGE,
   TRIAL_ENDED_MESSAGE,
 } from './subscription';
-import { formatFreeDaysLabel } from './useTrialGate';
+import { getTrialGateInfo } from './useTrialGate';
 import { useToast } from '../components/ToastProvider';
 import { FeatureLockModal } from '../components/FeatureLockModal';
 
@@ -54,7 +53,9 @@ export const FeatureGateProvider: React.FC<FeatureGateProviderProps> = ({
 
       if (state === 'warning') {
         if (!wasWarningShownToday(todayDateKey)) {
-          showToast(TRIAL_WARNING_MESSAGE(formatFreeDaysLabel(getTrialDaysRemaining())), {
+          // دور ششم / مورد ۶ — the warning toast reads the same shared gate as
+          // every badge and banner, so it can never quote a different number.
+          showToast(TRIAL_WARNING_MESSAGE(getTrialGateInfo(isProUser).freeDaysLabel), {
             kind: 'info',
             durationMs: 4200,
           });

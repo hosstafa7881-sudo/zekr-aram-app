@@ -8,6 +8,7 @@ import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { launchChromium } from './lib/browser.mjs';
 import { serveDist } from './lib/server.mjs';
+import { APP_VERSION } from './lib/appVersion.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DIST = path.join(ROOT, 'dist');
@@ -27,7 +28,12 @@ async function testAutoUpdate(browser) {
   // Pretend the server already carries a NEWER build than the bundle.
   await page.route('**/version.json*', (route) => {
     versionRequests += 1;
-    route.fulfill({ status: 200, contentType: 'application/json', body: '{"version": 6}' });
+    // Always exactly one ahead of whatever the bundle carries.
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ version: APP_VERSION + 1 }),
+    });
   });
   // Counting document navigations rather than 'load' events: a reload driven
   // by the app is a fresh document request for the page itself.

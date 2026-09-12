@@ -30,6 +30,7 @@ import {
   REMINDER_EXPLAINER,
   REMINDER_EXPLAINER_NOTE,
   REMINDER_PERMISSION_DENIED_MESSAGE,
+  REMINDER_PHONE_PERMISSION_GUIDE,
   REMINDER_SAVED_TOAST,
 } from '../../lib/messages';
 
@@ -88,9 +89,9 @@ export const NotificationBellPanel: React.FC<NotificationBellPanelProps> = ({
   // normalized (padded/clamped) only once, on blur.
   const [hourText, setHourText] = useState(savedHour);
   const [minuteText, setMinuteText] = useState(savedMinute);
-  const [isCustomOpen, setIsCustomOpen] = useState(
-    (settings.reminderCustomMessage || '').length > 0
-  );
+  // دور ششم / مورد ۸ — the custom-message box is no longer behind a
+  // «✏️ نوشتن پیام دلخواه» link; it is always open, so there is no open/closed
+  // state left to keep.
   const [customDraft, setCustomDraft] = useState(settings.reminderCustomMessage || '');
 
   // Re-sync the local free-typing fields from settings each time the panel
@@ -100,7 +101,6 @@ export const NotificationBellPanel: React.FC<NotificationBellPanelProps> = ({
       setHourText(savedHour);
       setMinuteText(savedMinute);
       setCustomDraft(settings.reminderCustomMessage || '');
-      setIsCustomOpen((settings.reminderCustomMessage || '').length > 0);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
@@ -254,6 +254,24 @@ export const NotificationBellPanel: React.FC<NotificationBellPanelProps> = ({
               />
             </div>
 
+            {/* دور ششم / مورد ۹ — a calm, always-present guide (not a warning):
+                it sits directly under the switch so the user reads it before
+                anything else, whether the reminder is on or off. */}
+            <div
+              data-testid="reminder-permission-guide"
+              className="bg-[var(--bg)] border border-[var(--border)] rounded-2xl p-3 space-y-1"
+            >
+              <p className="text-[11px] text-[var(--muted)] leading-relaxed">
+                🔔 {REMINDER_PHONE_PERMISSION_GUIDE[0]}
+              </p>
+              <p className="text-[11px] text-[var(--muted)] leading-relaxed">
+                {REMINDER_PHONE_PERMISSION_GUIDE[1]}
+              </p>
+              <p className="text-[10px] text-[var(--muted)]/80 leading-relaxed">
+                {REMINDER_PHONE_PERMISSION_GUIDE[2]}
+              </p>
+            </div>
+
             {settings.reminderEnabled && (
               <div data-testid="reminder-body" className="space-y-4">
                 <div className="text-[11px] text-[var(--muted)] leading-relaxed">
@@ -310,44 +328,43 @@ export const NotificationBellPanel: React.FC<NotificationBellPanelProps> = ({
                   </p>
                 </div>
 
+                {/* دور ششم / مورد ۸ — always open. «✏️ نوشتن پیام دلخواه» is a
+                    plain heading now, not a button that has to be tapped
+                    before the box appears. */}
                 <div>
-                  <button
-                    type="button"
-                    data-testid="reminder-custom-toggle"
-                    onClick={() => setIsCustomOpen((v) => !v)}
+                  <div
+                    data-testid="reminder-custom-heading"
                     className="flex items-center gap-1.5 text-xs font-bold text-[var(--accent)]"
                   >
                     <Pencil className="w-3.5 h-3.5" />
                     نوشتن پیام دلخواه
-                  </button>
+                  </div>
 
-                  {isCustomOpen && (
-                    <div className="mt-2 space-y-1.5">
-                      <textarea
-                        data-testid="reminder-custom-input"
-                        value={customDraft}
-                        onChange={(e) => handleCustomChange(e.target.value)}
-                        maxLength={REMINDER_MESSAGE_MAX_LENGTH}
-                        rows={3}
-                        placeholder="پیام یادآوری خودت رو اینجا بنویس… 😊"
-                        className="w-full bg-[var(--bg)] border border-[var(--border)] focus:border-[var(--accent)] rounded-2xl px-3 py-2.5 text-xs text-[var(--text)] outline-none leading-relaxed resize-none"
-                      />
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] text-[var(--muted)] tabular-nums-fa">
-                          {toPersianDigits(customDraft.length)} / {toPersianDigits(REMINDER_MESSAGE_MAX_LENGTH)}
-                        </span>
-                        <button
-                          type="button"
-                          data-testid="reminder-custom-reset"
-                          onClick={handleResetCustom}
-                          className="flex items-center gap-1 text-[10px] font-bold text-[var(--muted)] hover:text-[var(--text)]"
-                        >
-                          <RotateCcw className="w-3 h-3" />
-                          برگشت به پیام پیش‌فرض
-                        </button>
-                      </div>
+                  <div className="mt-2 space-y-1.5">
+                    <textarea
+                      data-testid="reminder-custom-input"
+                      value={customDraft}
+                      onChange={(e) => handleCustomChange(e.target.value)}
+                      maxLength={REMINDER_MESSAGE_MAX_LENGTH}
+                      rows={3}
+                      placeholder="پیام یادآوری خودت رو اینجا بنویس… 😊"
+                      className="w-full bg-[var(--bg)] border border-[var(--border)] focus:border-[var(--accent)] rounded-2xl px-3 py-2.5 text-xs text-[var(--text)] outline-none leading-relaxed resize-none"
+                    />
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] text-[var(--muted)] tabular-nums-fa">
+                        {toPersianDigits(customDraft.length)} / {toPersianDigits(REMINDER_MESSAGE_MAX_LENGTH)}
+                      </span>
+                      <button
+                        type="button"
+                        data-testid="reminder-custom-reset"
+                        onClick={handleResetCustom}
+                        className="flex items-center gap-1 text-[10px] font-bold text-[var(--muted)] hover:text-[var(--text)]"
+                      >
+                        <RotateCcw className="w-3 h-3" />
+                        برگشت به پیام پیش‌فرض
+                      </button>
                     </div>
-                  )}
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 gap-2">

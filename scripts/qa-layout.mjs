@@ -11,6 +11,7 @@ import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { launchChromium } from './lib/browser.mjs';
 import { serveDist } from './lib/server.mjs';
+import { APP_VERSION_LABEL } from './lib/appVersion.mjs';
 import { applySeed, buildSeedState } from './lib/seed.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -91,7 +92,7 @@ async function sweep(browser) {
     await page.getByRole('button', { name: 'تنظیمات', exact: true }).first().click();
     await page.waitForTimeout(250);
     const version = await page.getByTestId('app-version-label').textContent();
-    check(`مورد۲الف شماره‌ی نسخه @${viewport.name}`, version?.trim() === 'نسخه‌ی ۵', `«${version?.trim()}»`);
+    check(`مورد۲الف شماره‌ی نسخه @${viewport.name}`, version?.trim() === APP_VERSION_LABEL, `«${version?.trim()}»`);
 
     await context.close();
   }

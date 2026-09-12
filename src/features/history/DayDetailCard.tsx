@@ -15,6 +15,8 @@ interface DayDetailCardProps {
   log: DailyLog | undefined;
   notebookEntry: NotebookDayEntry | undefined;
   notebookItems: NotebookItemDef[];
+  /** مورد ۱ — the full history, so the shared text can carry the lifetime «⭐ ستاره | مدال» line. */
+  allDailyLogs: DailyLog[];
   onDeleteDay: (dateKey: string) => void;
   /** Called after the day is deleted — e.g. to close a full-page view that no longer has anything to show. */
   onDeleted?: () => void;
@@ -30,13 +32,14 @@ export const DayDetailCard: React.FC<DayDetailCardProps> = ({
   log,
   notebookEntry,
   notebookItems,
+  allDailyLogs,
   onDeleteDay,
   onDeleted,
 }) => {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
   const checkedIds = notebookEntry?.checkedItemIds || [];
-  const shareData = { shamsiDateLabel, log, notebookEntry, notebookItems };
+  const shareData = { shamsiDateLabel, log, notebookEntry, notebookItems, allDailyLogs };
   // 'full' — this card is used by both «۳۰ روز اخیر» and «جزئیات بیشتر», the two
   // places that share the COMPLETE notebook (مورد ۱۳).
   const dayShare = useDayShare(shareData, 'full');
