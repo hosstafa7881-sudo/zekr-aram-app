@@ -127,6 +127,12 @@ export function drawText(
   return measureLineHeight(ctx, opts.font);
 }
 
+/** Pixel size out of a CSS font shorthand — note the WEIGHT comes first, so a naive parseInt would read "800" as the size. */
+export function fontSizePx(font: string): number {
+  const match = /(\d+(?:\.\d+)?)px/.exec(font);
+  return match ? parseFloat(match[1]) : 32;
+}
+
 export function measureLineHeight(ctx: CanvasRenderingContext2D, font: string): number {
   ctx.save();
   ctx.font = font;
@@ -135,8 +141,7 @@ export function measureLineHeight(ctx: CanvasRenderingContext2D, font: string): 
   const ascent = m.actualBoundingBoxAscent || 0;
   const descent = m.actualBoundingBoxDescent || 0;
   const measured = ascent + descent;
-  const fallback = parseInt(font, 10) || 32;
-  return Math.max(measured * 1.35, fallback * 1.45);
+  return Math.max(measured * 1.3, fontSizePx(font) * 1.35);
 }
 
 export function measureTextWidth(

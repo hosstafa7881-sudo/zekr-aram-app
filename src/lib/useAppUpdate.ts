@@ -23,6 +23,29 @@ import { APP_VERSION } from './version';
 
 const CHECK_INTERVAL_MS = 5 * 60 * 1000;
 
+// Remembers, for this tab only, which server version we already reloaded for.
+// Without it a host that keeps handing back a stale HTML document would put
+// the app in an endless reload loop: load → see a newer version → reload →
+// get the same old document → see a newer version → … With it, we try exactly
+// once per newly-seen version and then leave the app usable.
+const RELOADED_FOR_KEY = 'zikraram_reloaded_for_version_v1';
+
+function alreadyTriedReloadFor(version: number): boolean {
+  try {
+    return sessionStorage.getItem(RELOADED_FOR_KEY) === String(version);
+  } catch {
+    return false;
+  }
+}
+
+function rememberReloadAttempt(version: number) {
+  try {
+    sessionStorage.setItem(RELOADED_FOR_KEY, String(version));
+  } catch {
+    // Ignore
+  }
+}
+
 async function fetchServerVersion(): Promise<number | null> {
   try {
     // Resolved against document.baseURI so it works both at the domain root
@@ -67,6 +90,8 @@ export function useAppUpdate() {
       const serverVersion = await fetchServerVersion();
       if (cancelled || serverVersion === null) return;
       if (serverVersion > APP_VERSION) {
+        if (alreadyTriedReloadFor(serverVersion)) return;
+        rememberReloadAttempt(serverVersion);
         reloading = true;
         reloadWithFreshHtml();
       }

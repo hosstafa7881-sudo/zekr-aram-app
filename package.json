@@ -7,7 +7,15 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "build:story-collage": "node scripts/build-story-collage.mjs",
+    "qa:layout": "node scripts/qa-layout.mjs",
+    "qa:flows": "node scripts/qa-flows.mjs",
+    "qa:flows2": "node scripts/qa-flows2.mjs",
+    "qa:occasions": "node scripts/qa-occasions.mjs",
+    "qa:misc": "node scripts/qa-misc.mjs",
+    "qa:storelinks": "node scripts/qa-storelinks.mjs",
+    "qa": "npm run build && npm run qa:layout && npm run qa:flows && npm run qa:flows2 && npm run qa:occasions && npm run qa:misc"
   },
   "dependencies": {
     "clsx": "2.1.1",

@@ -6,7 +6,7 @@ import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { DELETE_DAY_HISTORY_CONFIRM_MESSAGE } from '../../lib/messages';
 import { DayShareModal } from './DayShareModal';
 import { useDayShare } from './useDayShare';
-import { NO_DHIKR_ON_DAY_TEXT, dayHasDhikr } from '../../lib/dayShareText';
+import { NO_DHIKR_ON_DAY_TEXT, dayHasDhikr, dayHasNotebook } from '../../lib/dayShareText';
 import { Share2, Trash2, CheckCircle2, XCircle } from 'lucide-react';
 
 interface DayDetailCardProps {
@@ -42,7 +42,14 @@ export const DayDetailCard: React.FC<DayDetailCardProps> = ({
   const dayShare = useDayShare(shareData, 'full');
 
   return (
-    <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-3.5">
+    <div
+      data-testid="day-card"
+      // Which kinds of content this day actually has — the same two flags that
+      // decide its share options (مورد ۱۵).
+      data-has-dhikr={dayHasDhikr(shareData) ? 'yes' : 'no'}
+      data-has-notebook={dayHasNotebook(shareData) ? 'yes' : 'no'}
+      className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-3.5"
+    >
       {/* Header row — مورد ۱۶: the date stays on the right, and the two action
           icons sit together as one tight group on the left (share first, then
           delete, reading right-to-left). */}
