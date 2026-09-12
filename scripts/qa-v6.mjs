@@ -134,19 +134,16 @@ async function testDayShareStars(browser) {
   check('مورد۱ «فقط دفترچه» خط ستاره و مدال ندارد',
     !t30nb.includes('⭐') && !t30nb.includes('مدال'));
 
-  // --- ب) صفحه‌ی «جزئیات بیشتر» (same DayDetailCard, reached from the calendar)
-  await page.getByRole('button', { name: 'بازگشت' }).first().click();
+  // --- ب) مودال خلاصه‌ی تقویم و صفحه‌ی «جزئیات بیشتر»
+  // Back out of the ۳۰-day list to the «ریزآمار» detail page, which is where
+  // the «جست‌وجوی تاریخچه» calendar lives.
+  // Two «بازگشت» buttons exist (the detail page's, and the ۳۰-day overlay's on
+  // top of it) — the overlay's is the last one in the DOM.
+  await page.getByRole('button', { name: 'بازگشت' }).last().click();
+  await page.waitForTimeout(500);
+  await page.getByText('جست‌وجوی تاریخچه (تقویم شمسی)').scrollIntoViewIfNeeded();
   await page.waitForTimeout(300);
-  await page.getByRole('button', { name: 'بستن' }).first().click();
-  await page.waitForTimeout(300);
-  await goTab(page, 'تاریخچه');
-  await page.getByText('جستجوی تاریخچه').first().click().catch(() => {});
-  await page.waitForTimeout(300);
-  const today = new Date();
-  const todayCell = page
-    .locator('button', { hasText: new RegExp(`^${String(today.getDate())}$`) })
-    .first();
-  // The calendar renders Persian digits; select today's cell by its dot marker.
+  // The calendar renders Persian digits; pick a day that has the data dot.
   const dayCells = page.locator('.grid.grid-cols-7 > button');
   const cellCount = await dayCells.count();
   let opened = false;
@@ -388,17 +385,19 @@ async function testTrialLabels(browser) {
   check('مورد۶ برچسب کارت «ریزآمار روزهای گذشته»',
     historyText.includes(EXPECT), (historyText.match(/[۰-۹]+ روز (دیگه )?رایگانه/) || [''])[0]);
 
-  // کتابخانه‌ی ذکر → تسبیحات قفل‌شونده
-  await goTab(page, 'کتابخانه');
-  await page.waitForTimeout(400);
+  // کتابخانه‌ی ذکر → تسبیحات قفل‌شونده (از دکمه‌ی صفحه‌ی خانه)
+  await goTab(page, 'خانه');
+  await page.locator('[data-tour="home-library"]').click();
+  await page.waitForTimeout(500);
   const libText = await page.locator('main').textContent();
   await page.screenshot({ path: path.join(OUT, 'v6-label-library.png'), fullPage: true });
   check('مورد۶ برچسب ذکرهای قفل‌شونده در کتابخانه',
     libText.includes(EXPECT), (libText.match(/[۰-۹]+ روز (دیگه )?رایگانه/) || [''])[0]);
 
-  // صفحه‌ی اشتراک
-  await page.getByRole('button', { name: /اشتراک/ }).first().click();
-  await page.waitForTimeout(400);
+  // صفحه‌ی اشتراک — از کارت «تهیه اشتراک» در صفحه‌ی خانه
+  await goTab(page, 'خانه');
+  await page.getByRole('button', { name: /تهیه اشتراک|اشتراک ماهانه/ }).first().click();
+  await page.waitForTimeout(500);
   const paywallText = await page.locator('main').textContent();
   await page.screenshot({ path: path.join(OUT, 'v6-label-paywall.png'), fullPage: true });
   check('مورد۶ بنر صفحه‌ی اشتراک',
@@ -534,9 +533,9 @@ async function testReminderTab(browser) {
   await page.waitForTimeout(300);
   await goTab(page, 'تنظیمات');
   await page.waitForTimeout(300);
-  await page.getByRole('button', { name: /بازنشانی کامل/ }).first().click();
+  await page.getByRole('button', { name: 'پاک کردن کامل داده‌ها...' }).first().click();
   await page.waitForTimeout(300);
-  await page.getByRole('button', { name: /بله|تأیید|حذف/ }).first().click();
+  await page.getByRole('button', { name: 'بله، پاک شود' }).first().click();
   await page.waitForTimeout(1200);
   const afterReset = await page.evaluate(() =>
     JSON.parse(localStorage.getItem('zikraram_settings_v1') || '{}')
@@ -636,35 +635,25 @@ async function testVersion(browser) {
   check('مورد۱۱ public/version.json هم ۶ است و با کد هماهنگ است',
     served.version === 6, `version.json=${served.version}`);
 
-  // The auto-updater: pretend the server published version 7.
-  const reloaded = await page.evaluate(async () => {
-    const realFetch = window.fetch;
-    window.fetch = async (url, init) => {
-      if (String(url).includes('version.json')) {
-        return new Response(JSON.stringify({ version: 7 }), {
-          headers: { 'Content-Type': 'application/json' },
-        });
-      }
-      return realFetch(url, init);
-    };
-    let reloadCalled = false;
-    const origReload = window.location.reload;
-    Object.defineProperty(window.location, 'reload', {
-      configurable: true,
-      value: () => {
-        reloadCalled = true;
-      },
-    });
-    document.dispatchEvent(new Event('visibilitychange'));
-    await new Promise((r) => setTimeout(r, 1500));
-    Object.defineProperty(window.location, 'reload', {
-      configurable: true,
-      value: origReload,
-    });
-    return reloadCalled;
+  // مورد ۱۱ — the auto-updater: pretend the server published version 7 and
+  // confirm the app really reloads itself (a REAL navigation, observed by
+  // Playwright, not a stubbed function).
+  await page.route('**/version.json*', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ version: 7 }),
+    })
+  );
+  let navigated = false;
+  page.once('framenavigated', (frame) => {
+    if (frame === page.mainFrame()) navigated = true;
   });
-  check('مورد۱۱ مکانیزم به‌روزرسانی خودکار با انتشار نسخه‌ی بالاتر واکنش نشان می‌دهد',
-    reloaded === true, `reload=${reloaded}`);
+  await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+  await page.waitForTimeout(4000);
+  check('مورد۱۱ مکانیزم به‌روزرسانی خودکار با انتشار نسخه‌ی بالاتر، برنامه را تازه می‌کند',
+    navigated === true, `navigated=${navigated}`);
+  await page.unroute('**/version.json*');
 
   await context.close();
 }
@@ -742,7 +731,7 @@ async function run() {
       try {
         await fn(browser);
       } catch (e) {
-        check(`اجرای سناریوی «${name}»`, false, String(e).split('\n')[0]);
+        check(`اجرای سناریوی «${name}»`, false, String(e).split('\n').slice(0, 4).join(' / '));
       }
     }
   } finally {
