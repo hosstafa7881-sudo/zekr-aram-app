@@ -8,7 +8,7 @@ import {
   BackupPayload,
 } from '../../lib/db';
 import { toPersianDigits, getShamsiDateInfo } from '../../utils/persian';
-import { computeLifetimeTotal, computeStarCount, computeEarnedBadges, BADGE_LEVELS } from '../../lib/gamification';
+import { computeLifetimeTotal, computeStarCount, getTopBadge } from '../../lib/gamification';
 import { LockedFeatureId } from '../../lib/subscription';
 import { useTrialGate } from '../../lib/useTrialGate';
 import { NotebookItemDef, NotebookDayEntry } from '../notebook/notebookTypes';
@@ -66,7 +66,9 @@ export const HistoryBackupView: React.FC<HistoryBackupViewProps> = ({
   const shamsiToday = getShamsiDateInfo();
   const totalLifetimeCount = computeLifetimeTotal(dailyLogs);
   const starCount = computeStarCount(totalLifetimeCount);
-  const earnedBadges = computeEarnedBadges(totalLifetimeCount);
+  // مورد ۹ — highest medal only.
+  const topBadge = getTopBadge(totalLifetimeCount);
+  const hasAnyAchievement = starCount > 0 || !!topBadge;
   const starLabel = starCount < 10 ? '⭐'.repeat(starCount) : `${toPersianDigits(starCount)} ⭐`;
 
   // Rolling last-30-days summary (not calendar month — بخش ت #12/#16)
@@ -252,20 +254,25 @@ export const HistoryBackupView: React.FC<HistoryBackupViewProps> = ({
         بازگشت
       </button>
 
-      {/* Star & badge summary */}
-      <div className="flex items-center gap-2 bg-[var(--surface)] border border-[var(--border)] rounded-2xl px-4 py-3">
-        <Star className="w-4 h-4 text-[var(--accent)] shrink-0" />
-        <span className="text-xs font-bold text-[var(--text)]">
-          {starCount > 0 ? starLabel : 'هنوز ستاره‌ای نگرفته‌اید'}
-        </span>
-        <div className="flex items-center gap-1 mr-auto">
-          {BADGE_LEVELS.filter((b) => earnedBadges.includes(b.id)).map((b) => (
-            <span key={b.id} className="text-base" title={b.label}>
-              {b.emoji}
-            </span>
-          ))}
+      {/* Star & badge summary — مورد ۱۰: the whole box (not just its text) is
+          hidden while the user has neither a star nor a medal, so the app never
+          mentions what they haven't earned yet. */}
+      {hasAnyAchievement && (
+        <div
+          data-testid="stats-achievements"
+          className="flex items-center gap-2 bg-[var(--surface)] border border-[var(--border)] rounded-2xl px-4 py-3"
+        >
+          <Star className="w-4 h-4 text-[var(--accent)] shrink-0" />
+          <span className="text-xs font-bold text-[var(--text)]">{starLabel}</span>
+          <div className="flex items-center gap-1 mr-auto">
+            {topBadge && (
+              <span className="text-base" title={topBadge.label}>
+                {topBadge.emoji}
+              </span>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Last 30 days (rolling window, not calendar month) */}
       <button

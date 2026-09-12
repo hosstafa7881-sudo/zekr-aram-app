@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { DailyLog, UserSettings } from '../../lib/db';
 import { toPersianDigits, getShamsiDateInfo } from '../../utils/persian';
-import { computeLifetimeTotal, computeStarCount, computeEarnedBadges, BADGE_LEVELS } from '../../lib/gamification';
-import { shareText } from '../../components/ShareStoreLinks';
+import { computeLifetimeTotal, computeStarCount, getTopBadge } from '../../lib/gamification';
+import { shareAppText } from '../../lib/share';
 import { AdPlaceholder } from '../../components/AdPlaceholder';
 import { NotificationBellPanel } from './NotificationBellPanel';
 import { SupportUsModal } from './SupportUsModal';
@@ -46,15 +46,17 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
   const lifetimeTotal = computeLifetimeTotal(dailyLogs);
   const starCount = computeStarCount(lifetimeTotal);
-  const earnedBadges = computeEarnedBadges(lifetimeTotal);
-  const hasAnyAchievement = starCount > 0 || earnedBadges.length > 0;
+  // مورد ۹ — only the single highest medal is ever displayed.
+  const topBadge = getTopBadge(lifetimeTotal);
+  const hasAnyAchievement = starCount > 0 || !!topBadge;
 
   const starLabel = starCount < 10 ? '⭐'.repeat(starCount) : `${toPersianDigits(starCount)} ⭐`;
 
   const handleShareApp = () => {
-    shareText(APP_SHARE_MESSAGE, () =>
-      showToast('متن اشتراک‌گذاری در حافظهٔ موقت کپی شد.', { kind: 'success' })
-    );
+    shareAppText(APP_SHARE_MESSAGE, {
+      onCopiedToClipboard: () =>
+        showToast('متن اشتراک‌گذاری در حافظهٔ موقت کپی شد.', { kind: 'success' }),
+    });
   };
 
   return (
@@ -65,7 +67,9 @@ export const HomeView: React.FC<HomeViewProps> = ({
           <h2 className="text-lg font-bold text-[var(--text)]">السلام علیک یا مولای</h2>
           <p className="text-xs text-[var(--muted)]">{shamsiToday.formattedFull}</p>
         </div>
-        <div className="flex items-center gap-1.5">
+        {/* مورد ۲۲ — one tour highlight covers all three icons at once, so
+            they live in a single container carrying the data-tour hook. */}
+        <div data-tour="home-actions" className="flex items-center gap-1.5">
           <button
             type="button"
             onClick={handleShareApp}
@@ -80,17 +84,16 @@ export const HomeView: React.FC<HomeViewProps> = ({
             onClick={() => setIsSupportOpen(true)}
             title="حمایت از ما"
             aria-label="حمایت از ما"
-            className="flex items-center justify-center w-9 h-9 rounded-2xl bg-[var(--surface)] border border-[var(--border)] text-[var(--accent)] hover:border-[var(--accent)]/50 transition-all"
+            className="flex items-center justify-center w-9 h-9 rounded-2xl bg-[var(--surface)] border border-[var(--border)] text-[var(--icon-heart)] hover:border-[var(--accent)]/50 transition-all"
           >
             <HeartHandshake className="w-4 h-4" />
           </button>
           <button
             type="button"
-            data-tour="home-bell"
             onClick={() => setIsBellOpen(true)}
-            title="اعلانات و مناسبت‌های مذهبی"
-            aria-label="اعلانات و مناسبت‌های مذهبی"
-            className="relative flex items-center justify-center w-9 h-9 rounded-2xl bg-[var(--surface)] border border-[var(--border)] text-[var(--accent)] hover:border-[var(--accent)]/50 transition-all"
+            title="اعلانات و مناسبت‌ها"
+            aria-label="اعلانات و مناسبت‌ها"
+            className="relative flex items-center justify-center w-9 h-9 rounded-2xl bg-[var(--surface)] border border-[var(--border)] text-[var(--icon-bell)] hover:border-[var(--accent)]/50 transition-all"
           >
             <Bell className="w-4 h-4" />
           </button>
@@ -128,11 +131,11 @@ export const HomeView: React.FC<HomeViewProps> = ({
           <Star className="w-4 h-4 text-[var(--accent)]" />
           <span className="text-xs font-bold text-[var(--text)]">{starLabel}</span>
           <div className="flex items-center gap-1 mr-auto">
-            {BADGE_LEVELS.filter((b) => earnedBadges.includes(b.id)).map((b) => (
-              <span key={b.id} className="text-base" title={b.label}>
-                {b.emoji}
+            {topBadge && (
+              <span className="text-base" title={topBadge.label}>
+                {topBadge.emoji}
               </span>
-            ))}
+            )}
           </div>
         </div>
       )}

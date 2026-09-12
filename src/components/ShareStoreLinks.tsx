@@ -2,6 +2,10 @@ import React from 'react';
 import { Store } from 'lucide-react';
 import { getAvailableStoreLinks } from '../config/storeLinks';
 
+// NOTE: the actual sharing logic lives in src/lib/share.ts — the one shared
+// module every share button goes through (مورد ۴). This file only renders the
+// little "دانلود ذکرآرام از:" link row shown inside share dialogs.
+
 /** Renders download buttons only for stores that already have a configured link. */
 export const ShareStoreLinks: React.FC = () => {
   const links = getAvailableStoreLinks();
@@ -27,21 +31,3 @@ export const ShareStoreLinks: React.FC = () => {
     </div>
   );
 };
-
-/** Best-effort share via Web Share API, falling back to clipboard copy. */
-export async function shareText(text: string, onFallback?: () => void) {
-  try {
-    if (navigator.share) {
-      await navigator.share({ text, title: 'ذکرآرام' });
-      return;
-    }
-  } catch {
-    // User cancelled or share failed — fall through to clipboard
-  }
-  try {
-    await navigator.clipboard.writeText(text);
-    onFallback?.();
-  } catch {
-    // Ignore — nothing more we can do without a backend
-  }
-}

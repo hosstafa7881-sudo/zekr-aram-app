@@ -25,7 +25,9 @@ import { OnboardingTour } from './components/OnboardingTour';
 import { useGamificationEvents } from './lib/useGamificationEvents';
 import { useOccasionNotice } from './lib/useOccasionNotice';
 import { useDailyReminder } from './lib/useDailyReminder';
+import { useAppUpdate } from './lib/useAppUpdate';
 import { CelebrationModal } from './features/gamification/CelebrationModal';
+import { MedalEarnedModal } from './features/gamification/MedalEarnedModal';
 import {
   NotebookItemDef,
   NotebookDayEntry,
@@ -37,7 +39,6 @@ import {
   saveNotebookEntries,
   createEmptyEntry,
 } from './features/notebook/notebookStorage';
-import { AppHeader } from './components/AppHeader';
 import { BottomNav, AppTab } from './components/BottomNav';
 import { CounterView } from './features/counter/CounterView';
 import { DhikrLibraryView } from './features/dhikrs/DhikrLibraryView';
@@ -54,6 +55,9 @@ import { ReferralDiscountModal } from './features/discounts/ReferralDiscountModa
 import { DiscountEarnedModal } from './features/discounts/DiscountEarnedModal';
 
 export function App() {
+  // مورد ۲ب — self-updating build check (see useAppUpdate.ts).
+  useAppUpdate();
+
   const [dhikrs, setDhikrs] = useState<DhikrItem[]>(() => loadDhikrs());
   const [activeDhikrId, setActiveDhikrId] = useState<string>(() =>
     loadActiveDhikrId(loadDhikrs())
@@ -449,8 +453,14 @@ function MainShell(props: MainShellProps) {
   const { guard } = useFeatureGate();
   const { showToast } = useToast();
 
-  const { currentCelebration, dismissCelebration, starEarnedToast, dismissStarEarnedToast } =
-    useGamificationEvents(props.dailyLogs, props.todayDateKey);
+  const {
+    medalEarned,
+    dismissMedalEarned,
+    recordCelebration,
+    dismissRecordCelebration,
+    starEarnedToast,
+    dismissStarEarnedToast,
+  } = useGamificationEvents(props.dailyLogs, props.todayDateKey);
   useOccasionNotice(props.todayDateKey);
 
   // The star-earned toast is shown anchored above the counter box while the
@@ -512,8 +522,10 @@ function MainShell(props: MainShellProps) {
 
   return (
     <div className="min-h-screen bg-[var(--bg)] text-[var(--text)] flex flex-col justify-between antialiased">
-      <AppHeader />
-
+      {/* مورد ۱ — there is deliberately NO header bar here. The «ذکرآرام»
+          wordmark was removed in round four, and round five removes the empty
+          45px strip it left behind as well, so every page's own content starts
+          right at the top of the screen. */}
       <main className="flex-1 flex flex-col">
         {props.activeTab === 'home' && (
           <HomeView
@@ -541,6 +553,8 @@ function MainShell(props: MainShellProps) {
             onOpenLibraryModal={() => props.setActiveTab('library')}
             starEarnedToast={starEarnedToast}
             onDismissStarEarnedToast={dismissStarEarnedToast}
+            todayDateKey={props.todayDateKey}
+            countingBlocked={!!medalEarned}
             activeCountDiscount={countDiscount.activeCode}
             onOpenCountDiscount={() => setIsCountDiscountModalOpen(true)}
             onOpenReferralDiscount={() => setIsReferralModalOpen(true)}
@@ -609,13 +623,24 @@ function MainShell(props: MainShellProps) {
 
       <BottomNav activeTab={props.activeTab} onChangeTab={handleChangeTab} />
 
-      {currentCelebration && (
+      {/* مورد ۸ — medals get their own popup with a tap guard; the
+          record-broken celebration keeps the previous modal untouched. */}
+      {medalEarned && (
+        <MedalEarnedModal
+          badge={medalEarned}
+          dailyLogs={props.dailyLogs}
+          todayDateKey={props.todayDateKey}
+          onClose={dismissMedalEarned}
+        />
+      )}
+
+      {recordCelebration && (
         <CelebrationModal
           isOpen
-          emoji={currentCelebration.emoji}
-          message={currentCelebration.message}
-          shareText={currentCelebration.shareText}
-          onClose={dismissCelebration}
+          emoji={recordCelebration.emoji}
+          message={recordCelebration.message}
+          shareText={recordCelebration.shareText}
+          onClose={dismissRecordCelebration}
         />
       )}
 

@@ -1,6 +1,7 @@
 import React from 'react';
 import { X, Share2 } from 'lucide-react';
-import { ShareStoreLinks, shareText } from '../../components/ShareStoreLinks';
+import { ShareStoreLinks } from '../../components/ShareStoreLinks';
+import { shareAppText } from '../../lib/share';
 import { useToast } from '../../components/ToastProvider';
 
 interface CelebrationModalProps {
@@ -38,7 +39,10 @@ export const CelebrationModal: React.FC<CelebrationModalProps> = ({
         <button
           type="button"
           onClick={() =>
-            shareText(text, () => showToast('متن اشتراک‌گذاری در حافظهٔ موقت کپی شد.', { kind: 'success' }))
+            shareAppText(text, {
+              onCopiedToClipboard: () =>
+                showToast('متن اشتراک‌گذاری در حافظهٔ موقت کپی شد.', { kind: 'success' }),
+            })
           }
           className="w-full flex items-center justify-center gap-2 bg-[var(--accent)] hover:bg-[var(--accent-light)] text-white font-bold py-2.5 rounded-2xl shadow-md transition-all"
         >

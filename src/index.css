@@ -33,6 +33,12 @@
   --accent-dark: hsl(var(--brand-h) 52% 20%);
   --success: hsl(160 84% 39%);
   --danger: hsl(0 84% 60%);
+  /* مورد ۲۳ — the two deliberately-not-green home icons. This is the single
+     approved exception to the "all icons use the fixed brand green" rule and
+     applies ONLY to the bell and the heart on the home page. Night-mode
+     values are lightened so both stay readable on the dark background. */
+  --icon-bell: hsl(43 92% 62%);
+  --icon-heart: hsl(0 84% 66%);
 }
 
 :root[data-theme='day'] {
@@ -48,6 +54,10 @@
   --accent-dark: hsl(var(--brand-h) 52% 20%);
   --success: hsl(160 84% 30%);
   --danger: hsl(0 74% 48%);
+  /* مورد ۲۳ — golden/amber bell + red heart (not a light yellow: this is
+     dark enough to keep a readable contrast on the light background). */
+  --icon-bell: hsl(38 92% 38%);
+  --icon-heart: hsl(0 79% 46%);
 }
 
 /* Background palette — 6 soft tints, matched to the reference screenshot,

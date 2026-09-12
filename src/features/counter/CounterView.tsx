@@ -10,9 +10,8 @@ import {
   playTasbihBeadClick,
   playTargetReachedChime,
 } from '../../lib/haptics';
-import { computeLifetimeTotal, computeStarCount, computeEarnedBadges, BADGE_LEVELS } from '../../lib/gamification';
-import { shareText } from '../../components/ShareStoreLinks';
-import { useToast } from '../../components/ToastProvider';
+import { computeLifetimeTotal, computeStarCount, getTopBadge } from '../../lib/gamification';
+import { CounterShareModal } from './CounterShareModal';
 import { TARGET_REACHED_MESSAGE } from '../../lib/messages';
 import { HoldResetButton } from './HoldResetButton';
 import { TasbihatStageBar, getTasbihatStageDetail } from './TasbihatStageBar';
@@ -47,6 +46,9 @@ interface CounterViewProps {
   activeCountDiscount: ActiveDiscountCode | null;
   onOpenCountDiscount: () => void;
   onOpenReferralDiscount: () => void;
+  todayDateKey: string;
+  /** True while a blocking popup (currently the medal popup, مورد ۸) is open — no tap may be counted then. */
+  countingBlocked?: boolean;
 }
 
 export const CounterView: React.FC<CounterViewProps> = ({
@@ -63,11 +65,13 @@ export const CounterView: React.FC<CounterViewProps> = ({
   activeCountDiscount,
   onOpenCountDiscount,
   onOpenReferralDiscount,
+  todayDateKey,
+  countingBlocked = false,
 }) => {
   const [isTargetModalOpen, setIsTargetModalOpen] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [tapRipple, setTapRipple] = useState<{ x: number; y: number; id: number } | null>(null);
   const [milestoneBanner, setMilestoneBanner] = useState<string | null>(null);
-  const { showToast } = useToast();
 
   // Auto-dismiss the locally-anchored star toast after the same duration the
   // global toast used to use.
@@ -79,17 +83,10 @@ export const CounterView: React.FC<CounterViewProps> = ({
 
   const lifetimeTotal = computeLifetimeTotal(dailyLogs);
   const starCount = computeStarCount(lifetimeTotal);
-  const earnedBadges = computeEarnedBadges(lifetimeTotal);
-  const hasAnyAchievement = starCount > 0 || earnedBadges.length > 0;
+  // مورد ۹ — only the single highest medal is shown, never the whole set.
+  const topBadge = getTopBadge(lifetimeTotal);
+  const hasAnyAchievement = starCount > 0 || !!topBadge;
   const starLabel = starCount < 10 ? '⭐'.repeat(starCount) : `${toPersianDigits(starCount)} ⭐`;
-
-  const handleShareAchievement = () => {
-    const topBadge = [...BADGE_LEVELS].reverse().find((b) => earnedBadges.includes(b.id));
-    if (!topBadge) return;
-    shareText(topBadge.shareText, () =>
-      showToast('متن اشتراک‌گذاری در حافظهٔ موقت کپی شد.', { kind: 'success' })
-    );
-  };
 
   // Determine displayed Arabic text (with or without diacritics)
   const displayedArabicText = settings.showDiacritics
@@ -105,6 +102,10 @@ export const CounterView: React.FC<CounterViewProps> = ({
   // Handle +1 Tap
   const handleTapIncrement = useCallback(
     (e?: React.MouseEvent | React.TouchEvent | KeyboardEvent) => {
+      // مورد ۸ — while the medal popup is open, absolutely nothing is counted,
+      // because the user is mid-fast-tapping when the medal lands.
+      if (countingBlocked) return;
+
       // Check if target mode is 'stop' and already reached
       if (
         activeDhikr.targetMode === 'stop' &&
@@ -171,7 +172,7 @@ export const CounterView: React.FC<CounterViewProps> = ({
 
       onIncrement(1);
     },
-    [activeDhikr, onIncrement, settings]
+    [activeDhikr, onIncrement, settings, countingBlocked]
   );
 
   // Keyboard shortcuts (Space / ArrowUp for +1, ArrowDown for -1)
@@ -186,14 +187,14 @@ export const CounterView: React.FC<CounterViewProps> = ({
         handleTapIncrement(ev);
       } else if (ev.code === 'ArrowDown') {
         ev.preventDefault();
-        if (activeDhikr.count > 0) {
+        if (!countingBlocked && activeDhikr.count > 0) {
           onIncrement(-1);
         }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleTapIncrement, activeDhikr.count, onIncrement, isTargetModalOpen]);
+  }, [handleTapIncrement, activeDhikr.count, onIncrement, isTargetModalOpen, countingBlocked]);
 
   // SVG Ring calculation
   const circleRadius = 112;
@@ -346,6 +347,18 @@ export const CounterView: React.FC<CounterViewProps> = ({
           >
             <Vibrate className="w-4 h-4" />
           </button>
+
+          {/* مورد ۶ — share icon, same size/style as the two above it. */}
+          <button
+            type="button"
+            data-testid="counter-share-icon"
+            onClick={() => setIsShareModalOpen(true)}
+            title="اشتراک‌گذاری"
+            aria-label="اشتراک‌گذاری"
+            className="p-1.5 rounded-xl border transition-all bg-[var(--surface)] border-[var(--accent)]/40 text-[var(--accent)]"
+          >
+            <Share2 className="w-4 h-4" />
+          </button>
         </div>
       </div>
 
@@ -436,35 +449,25 @@ export const CounterView: React.FC<CounterViewProps> = ({
         </div>
       </div>
 
-      {/* Persistent star/badge section */}
-      <div className="mt-2 flex items-center gap-2 bg-[var(--surface)] border border-[var(--border)] rounded-2xl px-4 py-3">
-        {hasAnyAchievement ? (
-          <>
-            <Star className="w-4 h-4 text-[var(--accent)] shrink-0" />
-            <span className="text-xs font-bold text-[var(--text)]">{starLabel}</span>
-            <div className="flex items-center gap-1">
-              {BADGE_LEVELS.filter((b) => earnedBadges.includes(b.id)).map((b) => (
-                <span key={b.id} className="text-base" title={b.label}>
-                  {b.emoji}
-                </span>
-              ))}
-            </div>
-            {earnedBadges.length > 0 && (
-              <button
-                type="button"
-                onClick={handleShareAchievement}
-                title="اشتراک‌گذاری مدال"
-                aria-label="اشتراک‌گذاری مدال"
-                className="mr-auto flex items-center justify-center w-8 h-8 rounded-xl bg-[var(--accent)]/10 text-[var(--accent)] hover:bg-[var(--accent)]/20 transition-all"
-              >
-                <Share2 className="w-3.5 h-3.5" />
-              </button>
-            )}
-          </>
-        ) : (
-          <span className="text-xs text-[var(--muted)]">هنوز ستاره یا مدالی دریافت نکرده‌اید</span>
-        )}
-      </div>
+      {/* Star / medal section — مورد ۱۰: when the user has neither a star nor
+          a medal, the WHOLE box is hidden (not just its text), so nothing ever
+          tells them what they don't have yet. مورد ۷: the old fixed share icon
+          that used to sit here is gone — مورد ۶ (the share icon above the
+          counter box) and مورد ۸ (the medal popup) cover that job now. */}
+      {hasAnyAchievement && (
+        <div
+          data-testid="counter-achievements"
+          className="mt-2 flex items-center gap-2 bg-[var(--surface)] border border-[var(--border)] rounded-2xl px-4 py-3"
+        >
+          <Star className="w-4 h-4 text-[var(--accent)] shrink-0" />
+          <span className="text-xs font-bold text-[var(--text)]">{starLabel}</span>
+          {topBadge && (
+            <span className="text-base" title={topBadge.label}>
+              {topBadge.emoji}
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Discount entry points — بخش ث: right after the star/badge section, must stay above the fold on the counting page */}
       <DiscountButtonsRow
@@ -472,6 +475,26 @@ export const CounterView: React.FC<CounterViewProps> = ({
         onOpenCountDiscount={onOpenCountDiscount}
         onOpenReferralDiscount={onOpenReferralDiscount}
         className="mt-2"
+      />
+
+      {/* مورد ۶ — two-option share popup for this page */}
+      <CounterShareModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        dailyLogs={dailyLogs}
+        todayDateKey={todayDateKey}
+        imageInput={{
+          dhikr: activeDhikr,
+          arabicText: displayedArabicText,
+          translation: activeDhikr.translation || '',
+          stageLabel: tasbihatStage
+            ? tasbihatStage.persianTitle
+            : customStage
+            ? `مرحله ${toPersianDigits(customStage.stageNumber)}`
+            : 'شمارش فعلی',
+          starCount,
+          topBadge,
+        }}
       />
 
       {/* Target Configuration Modal */}

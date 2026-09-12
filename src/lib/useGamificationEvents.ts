@@ -10,6 +10,7 @@ import {
   saveGamificationState,
   BADGE_LEVELS,
   BadgeLevel,
+  CURRENT_BADGE_THRESHOLD_VERSION,
   RECORD_BROKEN_MESSAGE,
   RECORD_BROKEN_SHARE_TEXT,
 } from './gamification';
@@ -24,17 +25,21 @@ export interface PendingCelebration {
 }
 
 /**
- * Watches daily logs and fires star/badge/streak/record-break celebrations
+ * Watches daily logs and fires star/medal/streak/record-break celebrations
  * exactly once each, persisted so reloads don't re-trigger old milestones.
  *
- * The star-earned toast is NOT shown through the global top-of-screen toast
- * here — it's returned as `starEarnedToast` so the caller can render it
- * anchored above the counter box while the user is on the counting page
- * (where it's actually earned), falling back to the normal toast elsewhere.
+ * Three deliberately different presentations (مورد ۸):
+ *  * ستاره → a toast only, anchored above the counter box by CounterView.
+ *    Never a popup.
+ *  * مدال → `medalEarned`, rendered as the dedicated MedalEarnedModal popup
+ *    with its own tap guard. No toast at all for medals anymore.
+ *  * رکورد شکسته‌شده → the existing CelebrationModal, unchanged in behaviour
+ *    (only its wording changed, see مورد ۱۲).
  */
 export function useGamificationEvents(dailyLogs: DailyLog[], todayDateKey: string) {
   const { showToast } = useToast();
-  const [celebrationQueue, setCelebrationQueue] = useState<PendingCelebration[]>([]);
+  const [recordCelebration, setRecordCelebration] = useState<PendingCelebration | null>(null);
+  const [medalEarned, setMedalEarned] = useState<BadgeLevel | null>(null);
   const [starEarnedToast, setStarEarnedToast] = useState<string | null>(null);
   const stateRef = useRef(loadGamificationState());
 
@@ -50,7 +55,18 @@ export function useGamificationEvents(dailyLogs: DailyLog[], todayDateKey: strin
 
     const nextState = { ...state };
     let changed = false;
-    const newCelebrations: PendingCelebration[] = [];
+
+    // مورد ۹ — the medal thresholds changed to ۲۰۰۰/۱۰۰۰۰/۲۰۰۰۰. An existing
+    // user's stored `lastSeenBadges` was recorded against the old values, so
+    // re-derive it once from their real lifetime total and do NOT pop a
+    // celebration for medals they already had (or "un-earn" them loudly).
+    if (state.badgeThresholdVersion !== CURRENT_BADGE_THRESHOLD_VERSION) {
+      nextState.lastSeenBadges = earnedBadges;
+      nextState.badgeThresholdVersion = CURRENT_BADGE_THRESHOLD_VERSION;
+      stateRef.current = nextState;
+      saveGamificationState(nextState);
+      return;
+    }
 
     if (starCount > state.lastSeenStarCount) {
       setStarEarnedToast(STAR_EARNED_MESSAGE(toPersianDigits(starCount)));
@@ -60,10 +76,12 @@ export function useGamificationEvents(dailyLogs: DailyLog[], todayDateKey: strin
 
     const newlyEarnedBadges = earnedBadges.filter((b) => !state.lastSeenBadges.includes(b));
     if (newlyEarnedBadges.length > 0) {
-      newlyEarnedBadges.forEach((badgeId) => {
-        const badge = BADGE_LEVELS.find((b) => b.id === badgeId) as BadgeLevel;
-        newCelebrations.push({ emoji: badge.emoji, message: badge.earnedMessage, shareText: badge.shareText });
-      });
+      // Only the highest newly-earned medal is announced — the lower ones are
+      // replaced by it everywhere anyway (مورد ۹).
+      const highestNew = [...BADGE_LEVELS]
+        .reverse()
+        .find((b) => newlyEarnedBadges.includes(b.id));
+      if (highestNew) setMedalEarned(highestNew);
       nextState.lastSeenBadges = earnedBadges;
       changed = true;
     }
@@ -78,7 +96,11 @@ export function useGamificationEvents(dailyLogs: DailyLog[], todayDateKey: strin
     }
 
     if (bestPrevious > 0 && todayCount > bestPrevious && state.lastRecordCelebratedDateKey !== todayDateKey) {
-      newCelebrations.push({ emoji: '❤️', message: RECORD_BROKEN_MESSAGE, shareText: RECORD_BROKEN_SHARE_TEXT });
+      setRecordCelebration({
+        emoji: '😍',
+        message: RECORD_BROKEN_MESSAGE,
+        shareText: RECORD_BROKEN_SHARE_TEXT,
+      });
       nextState.lastRecordCelebratedDateKey = todayDateKey;
       changed = true;
     }
@@ -87,14 +109,14 @@ export function useGamificationEvents(dailyLogs: DailyLog[], todayDateKey: strin
       stateRef.current = nextState;
       saveGamificationState(nextState);
     }
-    if (newCelebrations.length > 0) {
-      setCelebrationQueue((prev) => [...prev, ...newCelebrations]);
-    }
   }, [dailyLogs, todayDateKey, showToast]);
 
-  const currentCelebration = celebrationQueue[0] || null;
-  const dismissCelebration = () => setCelebrationQueue((prev) => prev.slice(1));
-  const dismissStarEarnedToast = () => setStarEarnedToast(null);
-
-  return { currentCelebration, dismissCelebration, starEarnedToast, dismissStarEarnedToast };
+  return {
+    medalEarned,
+    dismissMedalEarned: () => setMedalEarned(null),
+    recordCelebration,
+    dismissRecordCelebration: () => setRecordCelebration(null),
+    starEarnedToast,
+    dismissStarEarnedToast: () => setStarEarnedToast(null),
+  };
 }

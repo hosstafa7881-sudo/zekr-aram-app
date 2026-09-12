@@ -5,6 +5,8 @@ import { toPersianDigits } from '../../utils/persian';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { DELETE_DAY_HISTORY_CONFIRM_MESSAGE } from '../../lib/messages';
 import { DayShareModal } from './DayShareModal';
+import { useDayShare } from './useDayShare';
+import { NO_DHIKR_ON_DAY_TEXT, dayHasDhikr } from '../../lib/dayShareText';
 import { Share2, Trash2, CheckCircle2, XCircle } from 'lucide-react';
 
 interface DayDetailCardProps {
@@ -32,33 +34,40 @@ export const DayDetailCard: React.FC<DayDetailCardProps> = ({
   onDeleted,
 }) => {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
-  const [shareOpen, setShareOpen] = useState(false);
 
   const checkedIds = notebookEntry?.checkedItemIds || [];
+  const shareData = { shamsiDateLabel, log, notebookEntry, notebookItems };
+  // 'full' — this card is used by both «۳۰ روز اخیر» and «جزئیات بیشتر», the two
+  // places that share the COMPLETE notebook (مورد ۱۳).
+  const dayShare = useDayShare(shareData, 'full');
 
   return (
     <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-3.5">
-      {/* Header row, right-to-left: date | share | delete */}
+      {/* Header row — مورد ۱۶: the date stays on the right, and the two action
+          icons sit together as one tight group on the left (share first, then
+          delete, reading right-to-left). */}
       <div className="flex items-center justify-between mb-2.5">
         <span className="text-sm font-bold text-[var(--text)]">{shamsiDateLabel}</span>
-        <button
-          type="button"
-          onClick={() => setShareOpen(true)}
-          title="اشتراک‌گذاری"
-          aria-label="اشتراک‌گذاری"
-          className="p-1.5 rounded-lg text-[var(--muted)] hover:text-[var(--accent)] hover:bg-[var(--accent)]/10"
-        >
-          <Share2 className="w-3.5 h-3.5" />
-        </button>
-        <button
-          type="button"
-          onClick={() => setDeleteConfirmOpen(true)}
-          title="حذف این روز"
-          aria-label="حذف این روز"
-          className="p-1.5 rounded-lg text-[var(--muted)] hover:text-[var(--danger)] hover:bg-[var(--danger)]/10"
-        >
-          <Trash2 className="w-3.5 h-3.5" />
-        </button>
+        <div data-testid="day-card-actions" className="flex items-center gap-2.5">
+          <button
+            type="button"
+            onClick={dayShare.start}
+            title="اشتراک‌گذاری"
+            aria-label="اشتراک‌گذاری"
+            className="p-1.5 rounded-lg text-[var(--muted)] hover:text-[var(--accent)] hover:bg-[var(--accent)]/10"
+          >
+            <Share2 className="w-3.5 h-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setDeleteConfirmOpen(true)}
+            title="حذف این روز"
+            aria-label="حذف این روز"
+            className="p-1.5 rounded-lg text-[var(--muted)] hover:text-[var(--danger)] hover:bg-[var(--danger)]/10"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
       </div>
 
       {log && Object.keys(log.breakdown).length > 0 && (
@@ -75,9 +84,18 @@ export const DayDetailCard: React.FC<DayDetailCardProps> = ({
         </div>
       )}
 
-      <div className="text-xs font-extrabold text-[var(--accent)] tabular-nums-fa mb-2.5">
-        مجموع: {toPersianDigits(log?.totalCount || 0)} ذکر
-      </div>
+      {dayHasDhikr(shareData) ? (
+        <div className="text-xs font-extrabold text-[var(--accent)] tabular-nums-fa mb-2.5">
+          مجموع: {toPersianDigits(log?.totalCount || 0)} ذکر
+        </div>
+      ) : (
+        <div
+          data-testid="day-card-no-dhikr"
+          className="text-xs font-bold text-[var(--muted)] mb-2.5"
+        >
+          {NO_DHIKR_ON_DAY_TEXT}
+        </div>
+      )}
 
       <div className="space-y-1 pt-2 border-t border-[var(--border)]">
         {notebookItems.map((item) => {
@@ -95,8 +113,10 @@ export const DayDetailCard: React.FC<DayDetailCardProps> = ({
               </div>
               {!done && reason && (reason.why || reason.solution) && (
                 <div className="mr-5 mt-0.5 text-[10px] text-[var(--muted)] leading-relaxed">
-                  {reason.why && <span>دلیل: {reason.why} </span>}
-                  {reason.solution && <span>راه‌حل: {reason.solution}</span>}
+                  {reason.why && <div data-testid="reason-why">دلیل: {reason.why}</div>}
+                  {reason.solution && (
+                    <div data-testid="reason-solution">راه‌حل: {reason.solution}</div>
+                  )}
                 </div>
               )}
             </div>
@@ -111,12 +131,11 @@ export const DayDetailCard: React.FC<DayDetailCardProps> = ({
       )}
 
       <DayShareModal
-        isOpen={shareOpen}
-        onClose={() => setShareOpen(false)}
-        shamsiDateLabel={shamsiDateLabel}
-        log={log}
-        notebookEntry={notebookEntry}
-        notebookItems={notebookItems}
+        isOpen={dayShare.isModalOpen}
+        onClose={dayShare.closeModal}
+        data={shareData}
+        variant="full"
+        options={dayShare.options}
       />
 
       <ConfirmDialog

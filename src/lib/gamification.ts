@@ -14,7 +14,7 @@ export interface BadgeLevel {
 export const BADGE_LEVELS: BadgeLevel[] = [
   {
     id: 'bronze',
-    threshold: 1000,
+    threshold: 2000,
     emoji: '🥉',
     label: 'مدال برنز',
     earnedMessage: 'تبریک! مدال برنز رو گرفتی 🥉 همینطور ادامه بده',
@@ -22,7 +22,7 @@ export const BADGE_LEVELS: BadgeLevel[] = [
   },
   {
     id: 'silver',
-    threshold: 5000,
+    threshold: 10000,
     emoji: '🥈',
     label: 'مدال نقره',
     earnedMessage: 'تبریک! مدال نقره رو گرفتی 🥈 پیشرفتت عالیه',
@@ -30,7 +30,7 @@ export const BADGE_LEVELS: BadgeLevel[] = [
   },
   {
     id: 'gold',
-    threshold: 10000,
+    threshold: 20000,
     emoji: '🥇',
     label: 'مدال طلا',
     earnedMessage: 'تبریک! به مدال طلا رسیدی 🥇 افتخارآفرینی کردی',
@@ -38,7 +38,7 @@ export const BADGE_LEVELS: BadgeLevel[] = [
   },
 ];
 
-export const RECORD_BROKEN_MESSAGE = 'آفرین! امروز رکورد خودتو شکستی ❤️';
+export const RECORD_BROKEN_MESSAGE = 'تبریک می‌گم! امروز رکورد ذکر گفتنت رو شکستی 😍';
 export const RECORD_BROKEN_SHARE_TEXT =
   'امروز رکورد ذکر گفتنم رو شکوندم 🎉 اگه بخوای تو هم می‌تونی امتحانش کنی.';
 
@@ -52,6 +52,25 @@ export function computeStarCount(lifetimeTotal: number): number {
 
 export function computeEarnedBadges(lifetimeTotal: number): BadgeLevel['id'][] {
   return BADGE_LEVELS.filter((b) => lifetimeTotal >= b.threshold).map((b) => b.id);
+}
+
+/**
+ * مورد ۹ — ONLY the highest earned medal is ever displayed: silver replaces
+ * bronze, gold replaces silver. Every surface that shows a medal (خانه،
+ * شمارنده، ریزآمار، متن‌ها و تصاویر اشتراک‌گذاری) must go through this helper
+ * rather than mapping over computeEarnedBadges, so the rule can never drift
+ * apart between screens. Returns null when no medal has been earned yet.
+ *
+ * Medals are always derived from the lifetime dhikr total, so changing the
+ * thresholds automatically re-evaluates a user's existing history — no stored
+ * medal list to migrate.
+ */
+export function getTopBadge(lifetimeTotal: number): BadgeLevel | null {
+  let top: BadgeLevel | null = null;
+  for (const badge of BADGE_LEVELS) {
+    if (lifetimeTotal >= badge.threshold) top = badge;
+  }
+  return top;
 }
 
 /** Consecutive days (including today) with totalCount > 0, walking backward from today. */
@@ -89,22 +108,41 @@ export interface GamificationState {
   lastSeenBadges: BadgeLevel['id'][];
   lastStreakCelebratedDateKey: string | null;
   lastRecordCelebratedDateKey: string | null;
+  /**
+   * Which generation of medal thresholds `lastSeenBadges` was recorded
+   * against. Bumped to 2 when the thresholds changed to ۲۰۰۰/۱۰۰۰۰/۲۰۰۰۰
+   * (مورد ۹): an existing user's stored list was computed with the old
+   * ۱۰۰۰/۵۰۰۰/۱۰۰۰۰ values, so it is silently re-derived from their real
+   * lifetime total once, WITHOUT popping celebration modals for medals they
+   * already knew about.
+   */
+  badgeThresholdVersion: number;
 }
 
 const STATE_KEY = 'zikraram_gamification_v1';
+
+export const CURRENT_BADGE_THRESHOLD_VERSION = 2;
 
 export const DEFAULT_GAMIFICATION_STATE: GamificationState = {
   lastSeenStarCount: 0,
   lastSeenBadges: [],
   lastStreakCelebratedDateKey: null,
   lastRecordCelebratedDateKey: null,
+  badgeThresholdVersion: CURRENT_BADGE_THRESHOLD_VERSION,
 };
 
 export function loadGamificationState(): GamificationState {
   try {
     const raw = localStorage.getItem(STATE_KEY);
     if (!raw) return DEFAULT_GAMIFICATION_STATE;
-    return { ...DEFAULT_GAMIFICATION_STATE, ...JSON.parse(raw) };
+    const parsed = JSON.parse(raw);
+    return {
+      ...DEFAULT_GAMIFICATION_STATE,
+      // A save written before the threshold change has no version field at
+      // all — treat it as generation 1 so the migration below runs once.
+      badgeThresholdVersion: 1,
+      ...parsed,
+    };
   } catch {
     return DEFAULT_GAMIFICATION_STATE;
   }

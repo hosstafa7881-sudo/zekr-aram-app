@@ -20,9 +20,11 @@ export { CUSTOM_DHIKR_DELETE_CONFIRM_MESSAGE } from './dhikrLimits'; // 8
 
 export { REMINDER_MESSAGE } from './notifications'; // 16
 
-// 3. Streak message — dynamic day count, built at the call site.
+// 3. Streak message — dynamic day count (Persian digits), built at the call
+// site. Wording + sticker updated in round five (مورد ۱۱); the *timing* logic
+// (streak >= 2, once per day) is unchanged.
 export const STREAK_MESSAGE = (dayCountLabel: string) =>
-  `${dayCountLabel} روز پیاپی ذکر گفتی! همینطور ادامه بده 🌿`;
+  `آفرین، ${dayCountLabel} روز پیاپی ذکر گفتی! همین‌طور ادامه بده 🌹`;
 
 // 7. Confirm deleting one day's history
 export const DELETE_DAY_HISTORY_CONFIRM_MESSAGE =

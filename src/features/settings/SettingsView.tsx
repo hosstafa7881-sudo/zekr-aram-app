@@ -5,6 +5,7 @@ import { LockedFeatureId } from '../../lib/subscription';
 import { useTrialGate } from '../../lib/useTrialGate';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { HARD_RESET_CONFIRM_MESSAGE } from '../../lib/messages';
+import { APP_VERSION_LABEL } from '../../lib/version';
 import {
   Vibrate,
   Volume2,
@@ -305,6 +306,16 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           }}
         />
       </div>
+
+      {/* مورد ۲الف — version line, deliberately small and muted. It doubles as
+          the quickest way for the user to confirm their phone is actually
+          showing the newest published build. */}
+      <p
+        data-testid="app-version-label"
+        className="text-[10px] text-[var(--muted)]/70 text-center pt-1"
+      >
+        {APP_VERSION_LABEL}
+      </p>
     </div>
   );
 };
