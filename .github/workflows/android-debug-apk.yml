@@ -14,6 +14,10 @@ name: Build Android debug APK
 on:
   push:
     branches: [main]
+  # So a change that would break the APK is caught on the pull request,
+  # instead of after it lands on main.
+  pull_request:
+    branches: [main]
   # Lets the APK be rebuilt on demand from the Actions tab, on any branch.
   workflow_dispatch:
 
