@@ -50,9 +50,57 @@ function toDataUri(file) {
 }
 
 /**
- * Picks the artwork. A PNG the user drops in wins over the bundled SVG, and a
- * raster source has no separable backdrop, so its adaptive foreground is just
- * the whole picture shrunk into the safe zone over a flat background colour.
+ * Reads the artwork's own background colour from its four corners. A photo-style
+ * icon carries its backdrop baked in, and painting the adaptive background layer
+ * that SAME colour is what makes a mask invisible: whatever a circle crops off
+ * the picture's edge is replaced by the identical colour underneath, instead of
+ * a contrasting field the cropped square then floats on.
+ *
+ * Returns null when the four corners disagree (a busy, edge-to-edge image), so
+ * the caller can fall back to the brand colour and the mask preview can show
+ * what that costs.
+ */
+async function sampleCornerColor(page, uri) {
+  return page.evaluate(async (uri) => {
+    const img = new Image();
+    await new Promise((res, rej) => {
+      img.onload = res;
+      img.onerror = rej;
+      img.src = uri;
+    });
+    const canvas = document.createElement('canvas');
+    canvas.width = img.width;
+    canvas.height = img.height;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0);
+    const inset = Math.max(2, Math.round(Math.min(img.width, img.height) * 0.02));
+    const points = [
+      [inset, inset],
+      [img.width - inset, inset],
+      [inset, img.height - inset],
+      [img.width - inset, img.height - inset],
+    ];
+    const samples = points.map(([x, y]) => Array.from(ctx.getImageData(x, y, 1, 1).data));
+    // Fully transparent corners mean there is no baked-in backdrop at all.
+    if (samples.every((s) => s[3] < 8)) return null;
+    const avg = [0, 1, 2].map((i) => Math.round(samples.reduce((a, s) => a + s[i], 0) / samples.length));
+    const spread = Math.max(
+      ...[0, 1, 2].map((i) => Math.max(...samples.map((s) => s[i])) - Math.min(...samples.map((s) => s[i])))
+    );
+    // More than a gentle gradient between corners → not one flat backdrop.
+    if (spread > 24) return null;
+    return `#${avg.map((v) => v.toString(16).padStart(2, '0')).join('')}`;
+  }, uri);
+}
+
+/**
+ * Picks the artwork. A PNG the user drops in wins over the bundled SVG.
+ *
+ * A raster source is drawn into the adaptive FOREGROUND at full size rather
+ * than shrunk into the safe zone: such an image is expected to carry its own
+ * safe margin (that is exactly what is asked for when one is supplied), and
+ * shrinking it a second time would leave the icon a small island. The mask
+ * preview is what proves the margin is really enough.
  */
 function pickSources() {
   const png = path.join(RES, 'icon-source.png');
@@ -122,13 +170,28 @@ async function run() {
   const page = await context.newPage();
   await page.setContent('<body></body>');
 
+  // A raster icon's backdrop is baked in, so the layer underneath is painted
+  // the same colour and the mask stops being visible as a seam.
+  let flatBackground = ICON_BACKGROUND;
+  if (src.raster) {
+    const sampled = await sampleCornerColor(page, src.full);
+    if (sampled) {
+      flatBackground = sampled;
+      console.log(`  background colour read from the image's corners: ${sampled}`);
+    } else {
+      console.log(`  ⚠ corners are transparent or not one flat colour — falling back to ${ICON_BACKGROUND}.`);
+      console.log('    Check docs/capacitor-v1/icon-masks.png before shipping this.');
+    }
+  }
+
   const outputs = [
     // Edge-to-edge: the legacy (pre-Android-8) square icon.
     ['icon-only.png', src.full, 1024, 1, null],
-    // Adaptive foreground: inside the safe zone, transparent around it.
-    ['icon-foreground.png', src.foreground, 1024, ADAPTIVE_SAFE_RATIO, null],
+    // Adaptive foreground. A raster source keeps its own margin (drawn full
+    // size); the project SVG has none, so it goes inside the safe zone.
+    ['icon-foreground.png', src.foreground, 1024, src.raster ? 1 : ADAPTIVE_SAFE_RATIO, null],
     // Adaptive background: edge to edge, so no mask shape can expose a corner.
-    ['icon-background.png', src.background || src.full, 1024, src.background ? 1 : 0, src.background ? null : ICON_BACKGROUND],
+    ['icon-background.png', src.background || src.full, 1024, src.background ? 1 : 0, src.background ? null : flatBackground],
     // Splash: the logo small and centred on the app's own background tint.
     ['splash.png', src.full, 2732, 0.22, SPLASH_BACKGROUND],
     ['splash-dark.png', src.full, 2732, 0.22, SPLASH_BACKGROUND],
