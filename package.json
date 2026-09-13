@@ -19,7 +19,8 @@
     "qa:misc": "node scripts/qa-misc.mjs",
     "qa:storelinks": "node scripts/qa-storelinks.mjs",
     "qa:v7": "node scripts/qa-v7.mjs",
-    "qa": "npm run build && npm run qa:layout && npm run qa:flows && npm run qa:flows2 && npm run qa:occasions && npm run qa:misc && npm run qa:v7"
+    "qa:occasion-dates": "node scripts/qa-occasion-dates.mjs",
+    "qa": "npm run build && npm run qa:layout && npm run qa:flows && npm run qa:flows2 && npm run qa:occasions && npm run qa:misc && npm run qa:v7 && npm run qa:occasion-dates"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.2",

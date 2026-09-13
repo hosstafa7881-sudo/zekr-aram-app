@@ -23,6 +23,21 @@ const HIJRI_MONTH_NAMES = [
   'ذی‌الحجه',
 ];
 
+// دور هشتم / مورد ۱۰ — built once. The upcoming-occasions scan converts a
+// year of days, and CONSTRUCTING an Intl.DateTimeFormat is the expensive part;
+// formatting with an existing one is cheap.
+let hijriFormatter: Intl.DateTimeFormat | null = null;
+function getHijriFormatter(): Intl.DateTimeFormat {
+  if (!hijriFormatter) {
+    hijriFormatter = new Intl.DateTimeFormat('en-US-u-ca-islamic', {
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric',
+    });
+  }
+  return hijriFormatter;
+}
+
 export function getHijriMonthName(month: number): string {
   return HIJRI_MONTH_NAMES[month - 1] || '';
 }
@@ -34,11 +49,7 @@ export function getHijriMonthName(month: number): string {
  */
 export function getHijriDateInfo(date = new Date()): HijriDateInfo {
   try {
-    const parts = new Intl.DateTimeFormat('en-US-u-ca-islamic', {
-      year: 'numeric',
-      month: 'numeric',
-      day: 'numeric',
-    }).formatToParts(date);
+    const parts = getHijriFormatter().formatToParts(date);
 
     let year = 1446;
     let month = 1;

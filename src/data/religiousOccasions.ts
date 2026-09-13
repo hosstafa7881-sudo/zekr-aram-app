@@ -1,69 +1,105 @@
-// Major Shia religious occasions, keyed by Hijri (lunar) month/day so they
-// recur correctly every year regardless of the Gregorian/Shamsi date.
-// This list can be freely edited/extended later — it is plain data, no logic.
+// دور هشتم / مورد ۱۰ — the Hijri (lunar) occasion table, REPLACED WHOLESALE.
+//
+// WHY: the old table had wrong data, and the wrongness was visible on the
+// user's phone. «میلاد حضرت ابوالفضل عباس (ع)» sat on ۴ ربیع‌الثانی instead of
+// ۴ شعبان, and «شهادت امام جعفر صادق (ع)» and «شهادت امام موسی کاظم (ع)» were
+// both filed under ۲۵ رجب, so the app showed them on the very same day.
+//
+// The conversion engine was never at fault — Intl's islamic calendar agrees
+// exactly with what the phone displayed. The DATA was wrong. This list is the
+// one the user supplied and approved; nothing has been added to it or removed
+// from it.
+//
+// Two entries fall on «آخرین روز ماه» and must not be pinned to a number: a
+// lunar month is 29 or 30 days depending on the year, so they carry
+// `hijriDay: 'last'` and occasions.ts resolves it per year.
 
-import { buildOccasionNotice } from '../lib/occasionMessages';
-
-export type OccasionType = 'birth' | 'martyrdom' | 'eid';
+/** غم (تسلیت) · شادی (تبریک) · خنثی (بدون هیچ‌کدام). */
+export type OccasionMood = 'sad' | 'happy' | 'neutral';
 
 export interface ReligiousOccasion {
   id: string;
-  hijriMonth: number; // 1-12
-  hijriDay: number; // 1-30
+  /** 1 محرم … 12 ذی‌الحجه */
+  hijriMonth: number;
+  /** A day number, or 'last' for «آخرین روز ماه» (29 or 30 depending on the year). */
+  hijriDay: number | 'last';
   title: string;
-  personName: string;
-  type: OccasionType;
-  /** True only for the subset that is an actual official public holiday in Iran (not every religious occasion is a day off). */
+  mood: OccasionMood;
+  /** Only the subset that is an actual day off in Iran — not every occasion is. */
   isOfficialHoliday?: boolean;
 }
 
 export const RELIGIOUS_OCCASIONS: ReligiousOccasion[] = [
-  { id: 'milad-payambar', hijriMonth: 3, hijriDay: 17, title: 'میلاد پیامبر اکرم (ص) و امام صادق (ع)', personName: 'پیامبر اکرم (ص)', type: 'birth', isOfficialHoliday: true },
-  { id: 'milad-imam-ali', hijriMonth: 7, hijriDay: 13, title: 'میلاد امام علی (ع)', personName: 'امام علی (ع)', type: 'birth' },
-  { id: 'milad-fatemeh', hijriMonth: 12, hijriDay: 20, title: 'میلاد حضرت فاطمه زهرا (س)', personName: 'حضرت فاطمه زهرا (س)', type: 'birth' },
-  { id: 'milad-imam-hassan', hijriMonth: 3, hijriDay: 15, title: 'میلاد امام حسن مجتبی (ع)', personName: 'امام حسن مجتبی (ع)', type: 'birth' },
-  { id: 'milad-imam-hossein', hijriMonth: 3, hijriDay: 3, title: 'میلاد امام حسین (ع)', personName: 'امام حسین (ع)', type: 'birth' },
-  { id: 'milad-abbas', hijriMonth: 4, hijriDay: 4, title: 'میلاد حضرت ابوالفضل عباس (ع)', personName: 'حضرت ابوالفضل عباس (ع)', type: 'birth' },
-  { id: 'milad-imam-sajjad', hijriMonth: 5, hijriDay: 5, title: 'میلاد امام سجاد (ع)', personName: 'امام سجاد (ع)', type: 'birth' },
-  { id: 'milad-imam-baqir', hijriMonth: 1, hijriDay: 1, title: 'میلاد امام محمدباقر (ع)', personName: 'امام محمدباقر (ع)', type: 'birth' },
-  { id: 'milad-imam-kazim', hijriMonth: 7, hijriDay: 7, title: 'میلاد امام موسی کاظم (ع)', personName: 'امام موسی کاظم (ع)', type: 'birth' },
-  { id: 'milad-imam-reza', hijriMonth: 11, hijriDay: 11, title: 'میلاد امام رضا (ع)', personName: 'امام رضا (ع)', type: 'birth' },
-  { id: 'milad-imam-jawad', hijriMonth: 10, hijriDay: 10, title: 'میلاد امام محمدتقی الجواد (ع)', personName: 'امام محمدتقی الجواد (ع)', type: 'birth' },
-  { id: 'milad-imam-hadi', hijriMonth: 2, hijriDay: 15, title: 'میلاد امام علی‌النقی الهادی (ع)', personName: 'امام علی‌النقی الهادی (ع)', type: 'birth' },
-  { id: 'milad-imam-askari', hijriMonth: 8, hijriDay: 4, title: 'میلاد امام حسن عسکری (ع)', personName: 'امام حسن عسکری (ع)', type: 'birth' },
-  { id: 'milad-imam-zaman', hijriMonth: 8, hijriDay: 15, title: 'میلاد امام زمان (عج)', personName: 'امام زمان (عج)', type: 'birth' },
-  { id: 'shahadat-payambar-imam-hassan', hijriMonth: 2, hijriDay: 28, title: 'شهادت پیامبر اکرم (ص) و امام حسن مجتبی (ع)', personName: 'پیامبر اکرم (ص)', type: 'martyrdom', isOfficialHoliday: true },
-  { id: 'shahadat-imam-ali', hijriMonth: 9, hijriDay: 21, title: 'شهادت امام علی (ع)', personName: 'امام علی (ع)', type: 'martyrdom', isOfficialHoliday: true },
-  { id: 'shahadat-fatemeh', hijriMonth: 1, hijriDay: 3, title: 'شهادت حضرت فاطمه زهرا (س)', personName: 'حضرت فاطمه زهرا (س)', type: 'martyrdom' },
-  { id: 'ashura', hijriMonth: 1, hijriDay: 10, title: 'شهادت امام حسین (ع) در روز عاشورا', personName: 'امام حسین (ع)', type: 'martyrdom', isOfficialHoliday: true },
-  { id: 'tasua', hijriMonth: 1, hijriDay: 9, title: 'تاسوعای حسینی', personName: 'امام حسین (ع)', type: 'martyrdom', isOfficialHoliday: true },
-  { id: 'arbaeen', hijriMonth: 2, hijriDay: 20, title: 'اربعین حسینی', personName: 'امام حسین (ع)', type: 'martyrdom', isOfficialHoliday: true },
-  { id: 'shahadat-imam-sajjad', hijriMonth: 1, hijriDay: 25, title: 'شهادت امام سجاد (ع)', personName: 'امام سجاد (ع)', type: 'martyrdom' },
-  { id: 'shahadat-imam-baqir', hijriMonth: 7, hijriDay: 7, title: 'شهادت امام محمدباقر (ع)', personName: 'امام محمدباقر (ع)', type: 'martyrdom' },
-  { id: 'shahadat-imam-sadiq', hijriMonth: 7, hijriDay: 25, title: 'شهادت امام جعفر صادق (ع)', personName: 'امام جعفر صادق (ع)', type: 'martyrdom', isOfficialHoliday: true },
-  { id: 'shahadat-imam-kazim', hijriMonth: 7, hijriDay: 25, title: 'شهادت امام موسی کاظم (ع)', personName: 'امام موسی کاظم (ع)', type: 'martyrdom' },
-  { id: 'shahadat-imam-reza', hijriMonth: 2, hijriDay: 30, title: 'شهادت امام رضا (ع)', personName: 'امام رضا (ع)', type: 'martyrdom', isOfficialHoliday: true },
-  { id: 'shahadat-imam-jawad', hijriMonth: 12, hijriDay: 29, title: 'شهادت امام محمدتقی الجواد (ع)', personName: 'امام محمدتقی الجواد (ع)', type: 'martyrdom', isOfficialHoliday: true },
-  { id: 'shahadat-imam-hadi', hijriMonth: 3, hijriDay: 3, title: 'شهادت امام علی‌النقی الهادی (ع)', personName: 'امام علی‌النقی الهادی (ع)', type: 'martyrdom' },
-  { id: 'shahadat-imam-askari', hijriMonth: 8, hijriDay: 8, title: 'شهادت امام حسن عسکری (ع)', personName: 'امام حسن عسکری (ع)', type: 'martyrdom', isOfficialHoliday: true },
-  { id: 'eid-fitr', hijriMonth: 10, hijriDay: 1, title: 'عید سعید فطر', personName: '', type: 'eid', isOfficialHoliday: true },
-  { id: 'eid-ghadir', hijriMonth: 12, hijriDay: 18, title: 'عید سعید غدیر خم', personName: '', type: 'eid', isOfficialHoliday: true },
-  { id: 'eid-mabath', hijriMonth: 7, hijriDay: 27, title: 'عید مبعث پیامبر اکرم (ص)', personName: '', type: 'eid', isOfficialHoliday: true },
-  { id: 'eid-adha', hijriMonth: 12, hijriDay: 10, title: 'عید سعید قربان', personName: '', type: 'eid', isOfficialHoliday: true },
-  { id: 'nimeh-shaban', hijriMonth: 8, hijriDay: 15, title: 'جشن نیمهٔ شعبان (میلاد امام زمان عج)', personName: 'امام زمان (عج)', type: 'eid', isOfficialHoliday: true },
+  // محرم
+  { id: 'aghaz-sal-ghamari', hijriMonth: 1, hijriDay: 1, title: 'آغاز سال نو قمری', mood: 'neutral' },
+  { id: 'vorood-karbala', hijriMonth: 1, hijriDay: 2, title: 'ورود امام حسین (ع) به کربلا', mood: 'sad' },
+  { id: 'tasua', hijriMonth: 1, hijriDay: 9, title: 'تاسوعای حسینی', mood: 'sad', isOfficialHoliday: true },
+  { id: 'ashura', hijriMonth: 1, hijriDay: 10, title: 'عاشورای حسینی', mood: 'sad', isOfficialHoliday: true },
+  { id: 'shahadat-imam-sajjad', hijriMonth: 1, hijriDay: 12, title: 'شهادت امام سجاد (ع)', mood: 'sad' },
+
+  // صفر
+  { id: 'arbaeen', hijriMonth: 2, hijriDay: 20, title: 'اربعین حسینی', mood: 'sad', isOfficialHoliday: true },
+  { id: 'rehlat-payambar-shahadat-imam-hassan', hijriMonth: 2, hijriDay: 28, title: 'رحلت پیامبر اکرم (ص) و شهادت امام حسن مجتبی (ع)', mood: 'sad', isOfficialHoliday: true },
+  { id: 'shahadat-imam-reza', hijriMonth: 2, hijriDay: 'last', title: 'شهادت امام رضا (ع)', mood: 'sad', isOfficialHoliday: true },
+
+  // ربیع‌الاول
+  { id: 'shahadat-imam-askari', hijriMonth: 3, hijriDay: 8, title: 'شهادت امام حسن عسکری (ع)', mood: 'sad', isOfficialHoliday: true },
+  { id: 'aghaz-emamat-valiasr', hijriMonth: 3, hijriDay: 9, title: 'آغاز امامت حضرت ولیعصر (عج)', mood: 'happy' },
+  { id: 'milad-payambar-ahle-sonnat', hijriMonth: 3, hijriDay: 12, title: 'میلاد پیامبر اکرم (ص) به روایت اهل سنت — آغاز هفته وحدت', mood: 'happy' },
+  { id: 'veladat-payambar-imam-sadiq', hijriMonth: 3, hijriDay: 17, title: 'ولادت پیامبر اکرم (ص) و امام جعفر صادق (ع)', mood: 'happy', isOfficialHoliday: true },
+
+  // ربیع‌الثانی
+  { id: 'veladat-imam-askari', hijriMonth: 4, hijriDay: 8, title: 'ولادت امام حسن عسکری (ع)', mood: 'happy' },
+  { id: 'vafat-masoumeh', hijriMonth: 4, hijriDay: 10, title: 'وفات حضرت معصومه (س)', mood: 'sad' },
+
+  // جمادی‌الاول
+  { id: 'veladat-zeinab', hijriMonth: 5, hijriDay: 5, title: 'ولادت حضرت زینب (س) — روز پرستار', mood: 'happy' },
+  { id: 'ayyam-fatemiyeh', hijriMonth: 5, hijriDay: 13, title: 'ایام فاطمیه', mood: 'sad' },
+
+  // جمادی‌الثانی
+  { id: 'shahadat-fatemeh', hijriMonth: 6, hijriDay: 3, title: 'شهادت حضرت فاطمه زهرا (س)', mood: 'sad', isOfficialHoliday: true },
+  { id: 'vafat-ommolbanin', hijriMonth: 6, hijriDay: 13, title: 'وفات حضرت ام‌البنین (س)', mood: 'sad' },
+  { id: 'veladat-fatemeh', hijriMonth: 6, hijriDay: 20, title: 'ولادت حضرت فاطمه زهرا (س) — روز مادر', mood: 'happy' },
+
+  // رجب
+  { id: 'veladat-imam-baqir', hijriMonth: 7, hijriDay: 1, title: 'ولادت امام محمد باقر (ع)', mood: 'happy' },
+  { id: 'shahadat-imam-hadi', hijriMonth: 7, hijriDay: 3, title: 'شهادت امام هادی (ع)', mood: 'sad' },
+  { id: 'veladat-imam-taqi', hijriMonth: 7, hijriDay: 10, title: 'ولادت امام محمد تقی (ع)', mood: 'happy' },
+  { id: 'veladat-imam-ali', hijriMonth: 7, hijriDay: 13, title: 'ولادت امام علی (ع) — روز پدر', mood: 'happy', isOfficialHoliday: true },
+  { id: 'vafat-zeinab', hijriMonth: 7, hijriDay: 15, title: 'وفات حضرت زینب (س)', mood: 'sad' },
+  { id: 'shahadat-imam-kazim', hijriMonth: 7, hijriDay: 25, title: 'شهادت امام موسی کاظم (ع)', mood: 'sad' },
+  { id: 'mabath', hijriMonth: 7, hijriDay: 27, title: 'مبعث پیامبر اکرم (ص)', mood: 'happy', isOfficialHoliday: true },
+
+  // شعبان
+  { id: 'veladat-imam-hossein', hijriMonth: 8, hijriDay: 3, title: 'ولادت امام حسین (ع) — روز پاسدار', mood: 'happy' },
+  { id: 'veladat-abolfazl', hijriMonth: 8, hijriDay: 4, title: 'ولادت حضرت ابوالفضل العباس (ع) — روز جانباز', mood: 'happy' },
+  { id: 'veladat-imam-sajjad', hijriMonth: 8, hijriDay: 5, title: 'ولادت امام سجاد (ع)', mood: 'happy' },
+  { id: 'veladat-ali-akbar', hijriMonth: 8, hijriDay: 11, title: 'ولادت حضرت علی اکبر (ع) — روز جوان', mood: 'happy' },
+  { id: 'veladat-mahdi', hijriMonth: 8, hijriDay: 15, title: 'ولادت حضرت مهدی (عج)', mood: 'happy', isOfficialHoliday: true },
+
+  // رمضان
+  { id: 'aghaz-ramazan', hijriMonth: 9, hijriDay: 1, title: 'آغاز ماه مبارک رمضان', mood: 'happy' },
+  { id: 'veladat-imam-hassan', hijriMonth: 9, hijriDay: 15, title: 'ولادت امام حسن مجتبی (ع)', mood: 'happy' },
+  { id: 'zarbat-imam-ali', hijriMonth: 9, hijriDay: 19, title: 'ضربت خوردن امام علی (ع) — شب قدر', mood: 'sad' },
+  { id: 'shahadat-imam-ali', hijriMonth: 9, hijriDay: 21, title: 'شهادت امام علی (ع) — شب قدر', mood: 'sad', isOfficialHoliday: true },
+  { id: 'shab-ghadr-23', hijriMonth: 9, hijriDay: 23, title: 'شب قدر', mood: 'neutral' },
+
+  // شوال
+  { id: 'eid-fitr', hijriMonth: 10, hijriDay: 1, title: 'عید سعید فطر', mood: 'happy', isOfficialHoliday: true },
+  { id: 'eid-fitr-2', hijriMonth: 10, hijriDay: 2, title: 'تعطیل به مناسبت عید فطر', mood: 'neutral', isOfficialHoliday: true },
+  { id: 'shahadat-imam-sadiq', hijriMonth: 10, hijriDay: 25, title: 'شهادت امام جعفر صادق (ع)', mood: 'sad', isOfficialHoliday: true },
+
+  // ذی‌القعده
+  { id: 'veladat-imam-reza', hijriMonth: 11, hijriDay: 11, title: 'ولادت امام رضا (ع)', mood: 'happy' },
+  { id: 'shahadat-imam-taqi', hijriMonth: 11, hijriDay: 'last', title: 'شهادت امام محمد تقی (ع)', mood: 'sad' },
+
+  // ذی‌الحجه
+  { id: 'ezdevaj-ali-fatemeh', hijriMonth: 12, hijriDay: 1, title: 'ازدواج حضرت علی (ع) و حضرت فاطمه (س)', mood: 'happy' },
+  { id: 'shahadat-imam-baqir', hijriMonth: 12, hijriDay: 7, title: 'شهادت امام محمد باقر (ع)', mood: 'sad' },
+  { id: 'rooz-arafe', hijriMonth: 12, hijriDay: 9, title: 'روز عرفه', mood: 'happy' },
+  { id: 'eid-ghorban', hijriMonth: 12, hijriDay: 10, title: 'عید سعید قربان', mood: 'happy', isOfficialHoliday: true },
+  { id: 'veladat-imam-hadi', hijriMonth: 12, hijriDay: 15, title: 'ولادت امام هادی (ع)', mood: 'happy' },
+  { id: 'eid-ghadir', hijriMonth: 12, hijriDay: 18, title: 'عید سعید غدیر خم', mood: 'happy', isOfficialHoliday: true },
+  { id: 'veladat-imam-kazim', hijriMonth: 12, hijriDay: 20, title: 'ولادت امام موسی کاظم (ع)', mood: 'happy' },
+  { id: 'rooz-mobahele', hijriMonth: 12, hijriDay: 24, title: 'روز مباهله', mood: 'happy' },
 ];
-
-/**
- * مورد ۲۱ — a religious occasion's category follows directly from its `type`:
- * a martyrdom/رحلت day is a "غم" (تسلیت) day, a میلاد/عید/بعثت day is a
- * "شادی" (تبریک) day. Deriving it instead of storing a second field means the
- * two can never disagree when this list is edited later.
- */
-export function getOccasionMood(occasion: ReligiousOccasion): 'sad' | 'happy' {
-  return occasion.type === 'martyrdom' ? 'sad' : 'happy';
-}
-
-/** Single-occasion convenience wrapper around the shared notice builder. */
-export function getOccasionMessage(occasion: ReligiousOccasion): string {
-  return buildOccasionNotice(getOccasionMood(occasion), [occasion.title]);
-}

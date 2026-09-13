@@ -453,12 +453,12 @@ export const NotificationBellPanel: React.FC<NotificationBellPanelProps> = ({
                   }`}
                 >
                   <div className="shrink-0 mt-0.5">
-                    {occ.type === 'birth' ? (
-                      <Sparkles className="w-4 h-4 text-[var(--success)]" />
-                    ) : occ.type === 'martyrdom' ? (
+                    {occ.mood === 'happy' ? (
+                      <PartyPopper className="w-4 h-4 text-[var(--accent)]" />
+                    ) : occ.mood === 'sad' ? (
                       <Skull className="w-4 h-4 text-[var(--muted)]" />
                     ) : (
-                      <PartyPopper className="w-4 h-4 text-[var(--accent)]" />
+                      <Sparkles className="w-4 h-4 text-[var(--success)]" />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
