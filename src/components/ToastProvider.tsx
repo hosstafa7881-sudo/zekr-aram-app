@@ -69,6 +69,11 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           */
           <div
             key={t.id}
+            // A stable hook for the QA scripts. They used to locate toasts by
+            // `.fixed.top-3`, which silently found nothing the moment مورد ۹
+            // moved the stack to the bottom — a test must not be pinned to a
+            // layout class.
+            data-testid="toast"
             className="pointer-events-auto w-full max-w-sm rounded-2xl shadow-2xl bg-[var(--surface)]"
           >
             <div

@@ -72,7 +72,7 @@ async function noticesOn(browser, date, settings = {}) {
   await page.waitForTimeout(200);
   await context.clock.runFor(1500);
   await page.waitForTimeout(400);
-  const texts = await page.locator('.fixed.top-3 > div').allTextContents();
+  const texts = await page.locator('[data-testid="toast"]').allTextContents();
   await context.close();
   return texts.map((t) => t.trim());
 }
@@ -96,34 +96,48 @@ async function main() {
       notices.some((t) => t === 'امروز عید سعید غدیر خم است، تبریک می‌گم ❤️'),
       notices.join(' | ') || 'no notice');
 
-    // روزی با دو مناسبت هم‌نوع — ۲۵ رجب (شهادت امام صادق و امام کاظم)
+    // دور هشتم / مورد ۱۰ — ۲۵ رجب و ۲۵ شوال دیگر یک روز نیستند. این دقیقاً
+    // همان باگی است که کاربر گزارش کرد: در جدول قبلی هر دو شهادت روی ۲۵ رجب
+    // نشسته بودند.
     const rajab25 = findHijriDate(7, 25);
     notices = await noticesOn(browser, rajab25);
-    check('مورد۲۱ دو مناسبت هم‌نوع با «و» در یک اعلان ترکیب می‌شوند',
-      notices.some((t) => t.includes(' و ') && t.endsWith('تسلیت می‌گم 🖤')),
+    check('مورد۱۰ ۲۵ رجب فقط شهادت امام موسی کاظم (ع) است',
+      notices.length === 1 && notices[0] === 'امروز شهادت امام موسی کاظم (ع) است، تسلیت می‌گم 🖤',
       notices.join(' | ') || 'no notice');
 
-    // روزی با هم غم و هم شادی — ۳ ربیع‌الاول (اصلاح کاربر: دیگر دو اعلان جدا
-    // نمی‌فرستد؛ یک اعلان خنثی با هر دو عنوان، بدون تسلیت/تبریک)
+    const shawwal25 = findHijriDate(10, 25);
+    notices = await noticesOn(browser, shawwal25);
+    // Not asserting the COUNT here: the next ۲۵ شوال also happens to fall on
+    // ۱۳ فروردین, so a second, neutral notice legitimately appears beside it
+    // (only غم+شادی merge into one neutral notice — غم+خنثی stay separate).
+    // What matters is that امام صادق (ع) now has his own day, apart from
+    // امام کاظم (ع).
+    check('مورد۱۰ ۲۵ شوال شهادت امام جعفر صادق (ع) است، جدا از امام کاظم (ع)',
+      notices.some((t) => t === 'امروز شهادت امام جعفر صادق (ع) است، تسلیت می‌گم 🖤') &&
+        !notices.some((t) => t.includes('امام موسی کاظم')),
+      notices.join(' | ') || 'no notice');
+
+    // مورد۱۰ — «هیچ موردی را خودت اضافه نکن»: دو روزی که در جدول قبلی مناسبت
+    // داشتند و در جدول تأییدشده ندارند، باید واقعاً هیچ اعلانی ندهند.
     const rabi3 = findHijriDate(3, 3);
     notices = await noticesOn(browser, rabi3);
-    check('مورد۲۱ روز دارای هر دو نوع: یک اعلان خنثی واحد با هر دو عنوان',
-      notices.length === 1 &&
-        notices[0].includes(' و ') &&
-        notices[0].endsWith('است 📅') &&
-        !notices[0].includes('تسلیت') &&
-        !notices[0].includes('تبریک'),
-      notices.join(' | ') || 'no notice');
+    check('مورد۱۰ ۳ ربیع‌الاول در جدول تأییدشده مناسبتی ندارد',
+      notices.length === 0, notices.join(' | ') || 'بدون اعلان (درست)');
 
-    // نمونه‌ی دوم کاربر — ۷ رجب (میلاد امام موسی کاظم ع + شهادت امام محمدباقر ع)
     const rajab7 = findHijriDate(7, 7);
     notices = await noticesOn(browser, rajab7);
-    check('مورد۲۱ ۷ رجب هم همین قانون را می‌گیرد (یک اعلان خنثی)',
+    check('مورد۱۰ ۷ رجب در جدول تأییدشده مناسبتی ندارد',
+      notices.length === 0, notices.join(' | ') || 'بدون اعلان (درست)');
+
+    // مورد۲۱ — دو مناسبت هم‌دسته در یک روز با «و» ترکیب می‌شوند. با جدول
+    // تأییدشده، تنها روزی که در افق سه‌ساله این حالت را دارد ۱۴ خرداد ۱۴۰۷ است:
+    // عاشورای حسینی و رحلت امام خمینی (ره) هر دو در دسته‌ی غم.
+    const twoSameMood = new Date('2028-06-03T12:00:00Z');
+    notices = await noticesOn(browser, twoSameMood);
+    check('مورد۲۱ دو مناسبت هم‌دسته با «و» در یک اعلان ترکیب می‌شوند',
       notices.length === 1 &&
         notices[0].includes(' و ') &&
-        notices[0].endsWith('است 📅') &&
-        !notices[0].includes('تسلیت') &&
-        !notices[0].includes('تبریک'),
+        notices[0].endsWith('تسلیت می‌گم 🖤'),
       notices.join(' | ') || 'no notice');
 
     // نوروز — اول فروردین
@@ -150,8 +164,17 @@ async function main() {
     // روز رسمی غیرمذهبی — ۲۲ بهمن
     const bahman22 = findJalaliDate(11, 22);
     notices = await noticesOn(browser, bahman22);
-    check('مورد۲۱ روز رسمی غیرمذهبی: قالب «امروز … است 📅»',
-      notices.some((t) => t === 'امروز پیروزی انقلاب اسلامی ایران است 📅'),
+    // مورد۱۰ — در جدول تأییدشده، ۲۲ بهمن دسته‌ی «شادی» است (نه خنثی) و
+    // عنوانش «پیروزی انقلاب اسلامی».
+    check('مورد۱۰ ۲۲ بهمن: شادی، با عنوان جدول تأییدشده',
+      notices.some((t) => t === 'امروز پیروزی انقلاب اسلامی است، تبریک می‌گم ❤️'),
+      notices.join(' | ') || 'no notice');
+
+    // قالب خنثی «امروز … است 📅» روی یک روز رسمیِ خنثی در همان جدول.
+    const farvardin12 = findJalaliDate(1, 12);
+    notices = await noticesOn(browser, farvardin12);
+    check('مورد۲۱ روز خنثی: قالب «امروز … است 📅»',
+      notices.some((t) => t === 'امروز روز جمهوری اسلامی ایران است 📅'),
       notices.join(' | ') || 'no notice');
 
     // سوییچ‌ها
