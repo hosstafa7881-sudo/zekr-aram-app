@@ -1,0 +1,68 @@
+# فاز اول Capacitor — builds the installable debug APK on GitHub's runners, so
+# the app can be tried on a real phone without installing Android Studio.
+#
+# Where to get the file:
+#   GitHub → tab «Actions» → the newest «Build Android debug APK» run →
+#   section «Artifacts» → download «zekraram-debug-apk».
+#
+# It is a DEBUG build: fine for installing and testing by hand, not signed for
+# Cafe Bazaar / Google Play. The signed release build comes in a later phase,
+# once the upload key exists.
+
+name: Build Android debug APK
+
+on:
+  push:
+    branches: [main]
+  # Lets the APK be rebuilt on demand from the Actions tab, on any branch.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      # Brings the Android SDK onto the runner (the one piece the sandbox
+      # this project is developed in cannot download).
+      - uses: android-actions/setup-android@v3
+
+      - name: Install dependencies
+        run: npm ci
+
+      # The web app is built and copied into the Android project exactly the
+      # way `npm run android:sync` does it locally. Icons and splash assets are
+      # committed, so nothing is regenerated here.
+      - name: Build web app and sync into the Android project
+        run: npm run android:sync
+
+      - name: Build debug APK
+        working-directory: android
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: Show where the APK landed
+        run: ls -lh android/app/build/outputs/apk/debug/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: zekraram-debug-apk
+          path: android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 30
