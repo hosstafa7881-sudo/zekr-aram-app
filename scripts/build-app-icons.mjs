@@ -5,9 +5,11 @@
 //   node scripts/build-app-icons.mjs      (then: npx capacitor-assets generate --android)
 //
 // ── How to swap the artwork ───────────────────────────────────────────────
-// Drop a square PNG (1024×1024 or larger) at `resources/icon-source.png` and
-// re-run this script. It wins over `resources/icon-source.svg`, which is the
-// app's existing PWA logo (public/icon.svg) and the current default.
+// Put a square image (1024×1024 or larger) in `resources/user-icon/` — ANY
+// file name works, so a file uploaded straight from a phone needs no renaming
+// — and re-run this script. `resources/icon-source.png` is also still read, and
+// either wins over `resources/icon-source.svg`, which is the app's existing PWA
+// logo (public/icon.svg) and the current default.
 //
 // ── What it produces ──────────────────────────────────────────────────────
 //  resources/icon-only.png        1024×1024  the artwork edge-to-edge (legacy icon)
@@ -42,11 +44,18 @@ export const ICON_BACKGROUND = '#11221B';
  */
 export const ADAPTIVE_SAFE_RATIO = 72 / 108;
 
+const MIME = {
+  '.svg': 'image/svg+xml',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.webp': 'image/webp',
+};
+
 function toDataUri(file) {
-  const buf = fs.readFileSync(file);
-  return file.endsWith('.svg')
-    ? `data:image/svg+xml;base64,${buf.toString('base64')}`
-    : `data:image/png;base64,${buf.toString('base64')}`;
+  const type = MIME[path.extname(file).toLowerCase()];
+  if (!type) throw new Error(`unsupported image type: ${path.basename(file)}`);
+  return `data:${type};base64,${fs.readFileSync(file).toString('base64')}`;
 }
 
 /**
@@ -102,14 +111,38 @@ async function sampleCornerColor(page, uri) {
  * shrinking it a second time would leave the icon a small island. The mask
  * preview is what proves the margin is really enough.
  */
+/**
+ * Any image dropped in `resources/user-icon/`, whatever it is called. This
+ * exists so replacing the icon never depends on getting a file name exactly
+ * right — the usual way a swap silently does nothing and the old icon ships.
+ */
+function findDroppedIcon() {
+  const dir = path.join(RES, 'user-icon');
+  if (!fs.existsSync(dir)) return null;
+  const images = fs
+    .readdirSync(dir)
+    .filter((f) => /\.(png|jpe?g|webp)$/i.test(f))
+    .sort();
+  if (images.length === 0) return null;
+  if (images.length > 1) {
+    throw new Error(
+      `resources/user-icon/ holds ${images.length} images (${images.join(', ')}). ` +
+        'Leave exactly one so there is no doubt which is the icon.'
+    );
+  }
+  return path.join(dir, images[0]);
+}
+
 function pickSources() {
+  const dropped = findDroppedIcon();
   const png = path.join(RES, 'icon-source.png');
-  if (fs.existsSync(png)) {
+  const raster = dropped || (fs.existsSync(png) ? png : null);
+  if (raster) {
     return {
-      from: 'icon-source.png',
+      from: path.relative(RES, raster),
       raster: true,
-      full: toDataUri(png),
-      foreground: toDataUri(png),
+      full: toDataUri(raster),
+      foreground: toDataUri(raster),
       background: null,
     };
   }
