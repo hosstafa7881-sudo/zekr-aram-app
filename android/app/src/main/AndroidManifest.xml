@@ -49,7 +49,5 @@
     <!-- دور هشتم / مورد ۴ — ذخیره‌ی تصویر در گالری.
          Only needed up to Android 9: from Android 10 the app writes through
          MediaStore, which needs no permission at all. -->
-    <uses-permission
-        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
-        android:maxSdkVersion="28" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
 </manifest>

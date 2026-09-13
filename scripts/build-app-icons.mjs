@@ -17,8 +17,6 @@
 //                                            adaptive-icon SAFE ZONE, so no mask
 //                                            shape can ever clip it
 //  resources/icon-background.png  1024×1024  the flat colour behind it
-//  resources/splash.png           2732×2732  logo centred on the app's default
-//  resources/splash-dark.png      2732×2732  (سبز ملایم) background
 //
 // Android's adaptive icon is 108dp wide but only the middle 72dp is guaranteed
 // to survive every launcher mask, and a circular mask eats down to ~66dp. The
@@ -40,9 +38,24 @@ export const ICON_BACKGROUND = '#11221B';
 /**
  * Android's adaptive icon canvas is 108dp but only the middle 72dp is inside
  * the masked viewport, so the foreground artwork is drawn at 72/108 of it.
- * (The XML must NOT add an inset on top of this — see fixAdaptiveXml below.)
+ * (The XML must NOT add an inset on top of this — see fix-adaptive-icon-xml.mjs.)
  */
 export const ADAPTIVE_SAFE_RATIO = 72 / 108;
+
+/**
+ * دور هشتم / مورد ۸ — how much bigger the supplied artwork is drawn.
+ *
+ * The tally-counter picture carries 21-30% of empty margin on each side, which
+ * left the icon visibly smaller than every other app on the home screen. 1.25
+ * crops a quarter of that margin away; the artwork's own content is measured
+ * against the circular mask by preview-icon-masks.mjs, which is what proves
+ * nothing is clipped. The measured headroom before the farthest content corner
+ * reaches the circle was 1.371, so 1.25 keeps roughly 9% of clearance.
+ *
+ * Only raster artwork is zoomed. The project's SVG logo has no spare margin to
+ * crop and is already sized to the safe zone.
+ */
+export const RASTER_ZOOM = 1.25;
 
 const MIME = {
   '.svg': 'image/svg+xml',
@@ -218,16 +231,20 @@ async function run() {
   }
 
   const outputs = [
-    // Edge-to-edge: the legacy (pre-Android-8) square icon.
-    ['icon-only.png', src.full, 1024, 1, null],
-    // Adaptive foreground. A raster source keeps its own margin (drawn full
-    // size); the project SVG has none, so it goes inside the safe zone.
-    ['icon-foreground.png', src.foreground, 1024, src.raster ? 1 : ADAPTIVE_SAFE_RATIO, null],
+    // Edge-to-edge: the legacy (pre-Android-8) square icon. Zoomed to match
+    // the adaptive foreground so both layers show the artwork at one size.
+    ['icon-only.png', src.full, 1024, src.raster ? RASTER_ZOOM : 1, null],
+    // Adaptive foreground. Raster artwork is drawn at RASTER_ZOOM of the
+    // canvas — its own margin is the safe zone, and cropping some of that
+    // margin is what makes the icon match the size of its neighbours on the
+    // home screen. The project SVG has no spare margin, so it stays inside the
+    // safe zone instead.
+    ['icon-foreground.png', src.foreground, 1024, src.raster ? RASTER_ZOOM : ADAPTIVE_SAFE_RATIO, null],
     // Adaptive background: edge to edge, so no mask shape can expose a corner.
     ['icon-background.png', src.background || src.full, 1024, src.background ? 1 : 0, src.background ? null : flatBackground],
-    // Splash: the logo small and centred on the app's own background tint.
-    ['splash.png', src.full, 2732, 0.22, SPLASH_BACKGROUND],
-    ['splash-dark.png', src.full, 2732, 0.22, SPLASH_BACKGROUND],
+    // دور هشتم / مورد ۷ — no splash images any more. The splash screen was
+    // removed entirely, so generating them would only put files back that the
+    // Android project no longer references.
   ];
 
   for (const [name, uri, size, inset, background] of outputs) {
