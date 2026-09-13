@@ -34,9 +34,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Must be >= 22: that is what @capacitor/cli declares in its engines
+      # field, and `cap sync` aborts outright on anything older.
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - uses: actions/setup-java@v4
