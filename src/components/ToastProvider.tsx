@@ -48,20 +48,41 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   return (
     <ToastContext.Provider value={{ showToast }}>
       {children}
-      <div className="fixed top-3 inset-x-0 z-[70] flex flex-col items-center gap-2 px-3 pointer-events-none">
+      {/*
+        دور هشتم / مورد ۹ — toasts live at the BOTTOM now.
+
+        They used to sit at `top-3`, which is exactly where every full-screen
+        view puts its own `sticky top-0` header and where the trial banner sits.
+        A toast landed straight on top of them and both texts became
+        unreadable. The bottom strip is the one area no header or banner
+        claims; the padding clears the bottom nav bar (and the phone's gesture
+        bar via env(safe-area-inset-bottom)) so it never covers that either.
+      */}
+      <div className="fixed inset-x-0 bottom-0 z-[70] flex flex-col items-center gap-2 px-3 pb-[calc(5rem+env(safe-area-inset-bottom))] pointer-events-none">
         {toasts.map((t) => (
+          /*
+            The outer layer is deliberately OPAQUE. The success tint is only
+            20% alpha, so whatever sat behind a toast used to show straight
+            through the text — the second half of the unreadable-text bug. The
+            tint now composites over this solid surface instead of over the
+            page, which keeps the designed colour and makes the words legible.
+          */
           <div
             key={t.id}
-            className={`pointer-events-auto w-full max-w-sm flex items-center gap-2 px-4 py-3 rounded-2xl text-xs font-bold shadow-2xl border animate-fade-in ${
-              t.kind === 'celebration'
-                ? 'bg-[var(--accent)] text-white border-[var(--accent-dark)]'
-                : t.kind === 'success'
-                ? 'bg-[var(--success)]/20 text-[var(--text)] border-[var(--success)]'
-                : 'bg-[var(--surface)] text-[var(--text)] border-[var(--border)]'
-            }`}
+            className="pointer-events-auto w-full max-w-sm rounded-2xl shadow-2xl bg-[var(--surface)]"
           >
-            {ICONS[t.kind]}
-            <span className="leading-relaxed">{t.message}</span>
+            <div
+              className={`flex items-center gap-2 px-4 py-3 rounded-2xl text-xs font-bold border animate-fade-in ${
+                t.kind === 'celebration'
+                  ? 'bg-[var(--accent)] text-white border-[var(--accent-dark)]'
+                  : t.kind === 'success'
+                  ? 'bg-[var(--success)]/20 text-[var(--text)] border-[var(--success)]'
+                  : 'bg-[var(--surface)] text-[var(--text)] border-[var(--border)]'
+              }`}
+            >
+              {ICONS[t.kind]}
+              <span className="leading-relaxed">{t.message}</span>
+            </div>
           </div>
         ))}
       </div>

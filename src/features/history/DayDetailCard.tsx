@@ -8,6 +8,7 @@ import { DayShareModal } from './DayShareModal';
 import { useDayShare } from './useDayShare';
 import { NO_DHIKR_ON_DAY_TEXT, dayHasDhikr, dayHasNotebook } from '../../lib/dayShareText';
 import { Share2, Trash2, CheckCircle2, XCircle } from 'lucide-react';
+import { resolveDhikrDisplayTitle } from '../../lib/dhikrDisplayName';
 
 interface DayDetailCardProps {
   dateKey: string;
@@ -87,7 +88,7 @@ export const DayDetailCard: React.FC<DayDetailCardProps> = ({
               key={id}
               className="inline-flex items-center gap-1 bg-[var(--bg)] text-[var(--muted)] text-[10px] px-2 py-0.5 rounded-lg border border-[var(--border)] tabular-nums-fa"
             >
-              <span>{item.title}:</span>
+              <span>{resolveDhikrDisplayTitle(id, item.title, item.arabicText)}:</span>
               <strong className="text-[var(--text)]">{toPersianDigits(item.count)}</strong>
             </span>
           ))}

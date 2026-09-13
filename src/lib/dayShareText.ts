@@ -16,6 +16,7 @@ import { NotebookDayEntry, NotebookItemDef } from '../features/notebook/notebook
 import { toPersianDigits } from '../utils/persian';
 import { buildStarBadgeLine } from './dhikrShareText';
 import { computeLifetimeTotal, computeStarCount, getTopBadge } from './gamification';
+import { resolveDhikrDisplayTitle } from './dhikrDisplayName';
 
 export type DayShareOption = 'dhikr' | 'notebook' | 'both';
 export type DayShareVariant = 'full' | 'summary';
@@ -87,9 +88,16 @@ export function getAvailableDayShareOptions(data: DayShareData): DayShareOption[
 
 function buildDhikrLines(data: DayShareData): string[] {
   const lines = data.log
-    ? Object.values(data.log.breakdown)
-        .filter((item) => item.count > 0)
-        .map((item) => `${item.title}: ${toPersianDigits(item.count)}`)
+    ? Object.entries(data.log.breakdown)
+        .filter(([, item]) => item.count > 0)
+        // مورد ۱۱ — the shared text names the weekday dhikr too, not just its
+        // generic label. Same resolver the on-screen lists use.
+        .map(
+          ([id, item]) =>
+            `${resolveDhikrDisplayTitle(id, item.title, item.arabicText)}: ${toPersianDigits(
+              item.count
+            )}`
+        )
     : [];
   lines.push(
     dayHasDhikr(data)

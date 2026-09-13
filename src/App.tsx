@@ -185,12 +185,15 @@ export function App() {
             activeDhikr.id,
             activeDhikr.title,
             delta,
-            prevLogs
+            prevLogs,
+            // مورد ۱۱ — stored alongside the count so the record names its own
+            // dhikr, instead of history having to guess from the id later.
+            activeDhikr.arabicText
           )
         );
       }
     },
-    [activeDhikr.id, activeDhikr.title]
+    [activeDhikr.id, activeDhikr.title, activeDhikr.arabicText]
   );
 
   // Handle Reset of current dhikr count

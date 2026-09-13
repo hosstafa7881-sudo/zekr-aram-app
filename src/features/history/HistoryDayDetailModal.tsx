@@ -6,6 +6,7 @@ import { DayShareModal } from './DayShareModal';
 import { useDayShare } from './useDayShare';
 import { NO_DATA_FOR_DAY_MESSAGE } from '../../lib/messages';
 import { X, Share2, CheckCircle2, ChevronLeft } from 'lucide-react';
+import { resolveDhikrDisplayTitle } from '../../lib/dhikrDisplayName';
 
 interface HistoryDayDetailModalProps {
   isOpen: boolean;
@@ -72,7 +73,7 @@ export const HistoryDayDetailModal: React.FC<HistoryDayDetailModalProps> = ({
                     key={id}
                     className="inline-flex items-center gap-1 bg-[var(--bg)] text-[var(--muted)] text-[11px] px-2 py-0.5 rounded-lg border border-[var(--border)] tabular-nums-fa"
                   >
-                    <span>{item.title}:</span>
+                    <span>{resolveDhikrDisplayTitle(id, item.title, item.arabicText)}:</span>
                     <strong className="text-[var(--text)]">{toPersianDigits(item.count)}</strong>
                   </span>
                 ))}

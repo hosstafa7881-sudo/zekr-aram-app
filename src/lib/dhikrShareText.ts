@@ -18,6 +18,7 @@ import { DailyLog } from './db';
 import { BadgeLevel, computeLifetimeTotal, computeStarCount, getTopBadge } from './gamification';
 import { toPersianDigits, getShamsiDateInfo } from '../utils/persian';
 import { buildInviteLine } from './share';
+import { resolveDhikrDisplayTitle } from './dhikrDisplayName';
 
 export interface TodayDhikrSummary {
   shamsiDateLabel: string;
@@ -33,9 +34,13 @@ export function buildTodayDhikrSummary(
 ): TodayDhikrSummary {
   const todayLog = dailyLogs.find((l) => l.dateKey === todayDateKey);
   const lines = todayLog
-    ? Object.values(todayLog.breakdown)
-        .filter((item) => item.count > 0)
-        .map((item) => ({ title: item.title, count: item.count }))
+    ? Object.entries(todayLog.breakdown)
+        .filter(([, item]) => item.count > 0)
+        // مورد ۱۱ — «ذکر روز شنبه» alone does not say which dhikr was said.
+        .map(([id, item]) => ({
+          title: resolveDhikrDisplayTitle(id, item.title, item.arabicText),
+          count: item.count,
+        }))
     : [];
   const lifetimeTotal = computeLifetimeTotal(dailyLogs);
   return {
