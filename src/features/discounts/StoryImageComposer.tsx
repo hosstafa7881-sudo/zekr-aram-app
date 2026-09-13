@@ -6,8 +6,15 @@ import {
   generateStoryImage,
   generateStoryPreviewDataUrl,
 } from '../../lib/storyImage';
-import { buildInviteLine, downloadImageFile, shareAppImage } from '../../lib/share';
+import { buildInviteLine, shareAppImage } from '../../lib/share';
+import { saveImageToDevice, timestampedFileName } from '../../lib/saveImage';
 import { useToast } from '../../components/ToastProvider';
+
+/** دور هشتم / مورد ۴ — honest wording for the two ways saving can fail. */
+const SAVE_DENIED_MESSAGE =
+  'برای ذخیره‌ی عکس، باید به برنامه اجازه‌ی دسترسی به حافظه رو بدی. از تنظیمات گوشی می‌تونی روشنش کنی 🌿';
+const SAVE_FAILED_MESSAGE =
+  'عکس ذخیره نشد. یه‌بار دیگه امتحان کن، یا از دکمه‌ی اشتراک‌گذاری استفاده کن 🌿';
 
 interface StoryImageComposerProps {
   /**
@@ -62,11 +69,20 @@ export const StoryImageComposer: React.FC<StoryImageComposerProps> = ({ onImageA
     setBusy('download');
     try {
       const blob = await generateStoryImage({ customText: text });
-      downloadImageFile(blob, 'zekraram-story.png');
-      showToast('تصویر روی گوشیت دانلود شد. می‌تونی از گالری استوریش کنی 🌿', {
-        kind: 'success',
-        durationMs: 5000,
-      });
+      // دور هشتم / مورد ۴ — the success line is now spoken ONLY after the file
+      // really landed. The old code showed it unconditionally after an
+      // `<a download>` click that an Android WebView silently ignores.
+      const saved = await saveImageToDevice(blob, timestampedFileName('zekraram-story'));
+      if (saved.status === 'saved') {
+        showToast('تصویر روی گوشیت دانلود شد. می‌تونی از گالری استوریش کنی 🌿', {
+          kind: 'success',
+          durationMs: 5000,
+        });
+      } else if (saved.status === 'denied') {
+        showToast(SAVE_DENIED_MESSAGE, { kind: 'info', durationMs: 6000 });
+      } else {
+        showToast(SAVE_FAILED_MESSAGE, { kind: 'info', durationMs: 6000 });
+      }
     } catch {
       showToast('متأسفانه تصویر ساخته نشد. یه‌بار دیگه امتحان کن 🌿', { kind: 'info' });
     } finally {

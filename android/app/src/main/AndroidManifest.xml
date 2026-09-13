@@ -32,4 +32,24 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- دور هشتم / مورد ۳ — یادآوری روزانه و اعلان مناسبت‌ها -->
+    <!-- POST_NOTIFICATIONS is requested at runtime on Android 13+. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- So a scheduled reminder survives a reboot. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- So the reminder fires at the chosen minute instead of drifting into a
+         Doze batch — the whole point of the daily reminder. -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+
+    <!-- دور هشتم / مورد ۲ — ویبره هنگام شمارش ذکر -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+
+    <!-- دور هشتم / مورد ۴ — ذخیره‌ی تصویر در گالری.
+         Only needed up to Android 9: from Android 10 the app writes through
+         MediaStore, which needs no permission at all. -->
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
 </manifest>

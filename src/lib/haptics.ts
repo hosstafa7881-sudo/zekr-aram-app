@@ -1,3 +1,5 @@
+import { isNativePlatform } from './native';
+
 let audioCtx: AudioContext | null = null;
 let wakeLockSentinel: any = null;
 
@@ -30,13 +32,99 @@ const TAP_INTENSITY_PROFILE: Record<'light' | 'medium' | 'strong', { scale: numb
   strong: { scale: 2.4, min: 35 },
 };
 
+/**
+ * دور هشتم / مورد ۲ — fires the motor.
+ *
+ * The bug this fixes: the app only ever called `navigator.vibrate`, which the
+ * Android WebView does not implement, so vibration while counting did nothing
+ * at all inside the APK — however carefully the three intensities had been
+ * tuned. On native it now goes through @capacitor/haptics.
+ *
+ * The tuned numbers are deliberately UNCHANGED. @capacitor/haptics' vibrate()
+ * maps straight onto VibrationEffect.createOneShot(duration, DEFAULT_AMPLITUDE),
+ * so duration is what separates the three levels on real hardware — exactly
+ * the property the floors below were measured against (قانون بخش ۲ SKILL.md:
+ * a pulse has to be long enough for the motor to actually spin up, and the
+ * three levels have to be tellable apart).
+ */
+type HapticsModule = typeof import('@capacitor/haptics');
+let hapticsModule: HapticsModule | null = null;
+
+/**
+ * Loaded once, eagerly, so the FIRST tasbih tap does not pay for the import.
+ * A bead tap has to feel instant; waiting on a module resolve would put a
+ * visible gap between the tap and the pulse.
+ */
+function preloadHaptics() {
+  if (!isNativePlatform() || hapticsModule) return;
+  import('@capacitor/haptics')
+    .then((mod) => {
+      hapticsModule = mod;
+    })
+    .catch(() => {
+      hapticsModule = null;
+    });
+}
+preloadHaptics();
+
+function fireNativePulse(durationMs: number) {
+  // Fire-and-forget: a tasbih tap must never wait on a bridge round-trip.
+  if (hapticsModule) {
+    hapticsModule.Haptics.vibrate({ duration: durationMs }).catch(() => {});
+    return;
+  }
+  import('@capacitor/haptics')
+    .then((mod) => {
+      hapticsModule = mod;
+      return mod.Haptics.vibrate({ duration: durationMs });
+    })
+    .catch(() => {
+      // Nothing to fall back to — the web API is absent here by definition.
+    });
+}
+
+/** Plays a [on, off, on, …] pattern natively by sequencing the "on" pulses. */
+function fireNativePattern(pattern: number[]) {
+  let offset = 0;
+  pattern.forEach((value, index) => {
+    if (index % 2 === 0) {
+      const at = offset;
+      if (at === 0) fireNativePulse(value);
+      else window.setTimeout(() => fireNativePulse(value), at);
+    }
+    offset += value;
+  });
+}
+
 export function triggerVibration(
   pattern: number | number[],
   enabled = true,
   intensity: 'light' | 'medium' | 'strong' = 'medium'
 ) {
-  if (!enabled || typeof navigator === 'undefined' || !navigator.vibrate) return;
+  if (!enabled) return;
 
+  // Resolve the tuned duration(s) first, identically on both platforms, so the
+  // feel of the three levels cannot drift apart between app and browser.
+  let resolved: number | number[];
+  if (typeof pattern === 'number') {
+    const profile = TAP_INTENSITY_PROFILE[intensity];
+    resolved = Math.max(profile.min, Math.round(pattern * profile.scale));
+  } else {
+    // Longer, fixed-feel milestone/celebration patterns (stage/target
+    // reached) — these already use perceptible absolute durations and always
+    // pass a hardcoded intensity, so they keep the original gentler scale
+    // rather than the tap-specific floors above.
+    const scale = intensity === 'light' ? 0.6 : intensity === 'strong' ? 1.5 : 1;
+    resolved = pattern.map((v, i) => (i % 2 === 0 ? Math.max(10, Math.round(v * scale)) : v));
+  }
+
+  if (isNativePlatform()) {
+    if (typeof resolved === 'number') fireNativePulse(resolved);
+    else fireNativePattern(resolved);
+    return;
+  }
+
+  if (typeof navigator === 'undefined' || !navigator.vibrate) return;
   try {
     // Some Android WebViews/Chrome versions silently drop a new vibrate()
     // call while a previous one from a rapid tap is still considered
@@ -44,18 +132,7 @@ export function triggerVibration(
     // pattern is the standard workaround so each tap reliably re-triggers
     // the motor even during fast, repeated tasbih taps.
     navigator.vibrate(0);
-
-    if (typeof pattern === 'number') {
-      const profile = TAP_INTENSITY_PROFILE[intensity];
-      navigator.vibrate(Math.max(profile.min, Math.round(pattern * profile.scale)));
-    } else {
-      // Longer, fixed-feel milestone/celebration patterns (stage/target
-      // reached) — these already use perceptible absolute durations and
-      // always pass a hardcoded intensity, so they keep the original
-      // gentler scale rather than the tap-specific floors above.
-      const scale = intensity === 'light' ? 0.6 : intensity === 'strong' ? 1.5 : 1;
-      navigator.vibrate(pattern.map((v, i) => (i % 2 === 0 ? Math.max(10, Math.round(v * scale)) : v)));
-    }
+    navigator.vibrate(resolved);
   } catch {
     // Ignore on unsupported browsers
   }
