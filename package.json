@@ -9,6 +9,10 @@
     "preview": "vite preview",
     "type-check": "tsc --noEmit",
     "build:story-collage": "node scripts/build-story-collage.mjs",
+    "icons:android": "node scripts/build-app-icons.mjs && capacitor-assets generate --android && node scripts/fix-adaptive-icon-xml.mjs",
+    "android:sync": "npm run build && cap sync android",
+    "preview:icons": "node scripts/preview-icon-masks.mjs",
+    "preview:splash": "node scripts/preview-splash.mjs",
     "qa:layout": "node scripts/qa-layout.mjs",
     "qa:flows": "node scripts/qa-flows.mjs",
     "qa:flows2": "node scripts/qa-flows2.mjs",
@@ -19,6 +23,9 @@
     "qa": "npm run build && npm run qa:layout && npm run qa:flows && npm run qa:flows2 && npm run qa:occasions && npm run qa:misc && npm run qa:v7"
   },
   "dependencies": {
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/core": "^8.5.2",
+    "@capacitor/splash-screen": "^8.0.2",
     "clsx": "2.1.1",
     "lucide-react": "^1.41.0",
     "qrcode-generator": "^2.0.4",
@@ -27,6 +34,8 @@
     "tailwind-merge": "3.4.0"
   },
   "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^8.5.2",
     "@tailwindcss/vite": "4.1.17",
     "@types/node": "22.19.17",
     "@types/react": "19.2.7",
