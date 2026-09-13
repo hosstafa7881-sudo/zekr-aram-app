@@ -15,7 +15,8 @@
     "qa:occasions": "node scripts/qa-occasions.mjs",
     "qa:misc": "node scripts/qa-misc.mjs",
     "qa:storelinks": "node scripts/qa-storelinks.mjs",
-    "qa": "npm run build && npm run qa:layout && npm run qa:flows && npm run qa:flows2 && npm run qa:occasions && npm run qa:misc"
+    "qa:v7": "node scripts/qa-v7.mjs",
+    "qa": "npm run build && npm run qa:layout && npm run qa:flows && npm run qa:flows2 && npm run qa:occasions && npm run qa:misc && npm run qa:v7"
   },
   "dependencies": {
     "clsx": "2.1.1",

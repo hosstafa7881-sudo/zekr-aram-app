@@ -64,8 +64,45 @@ export interface ShareResultHandlers {
   onCopiedToClipboard?: () => void;
   /** Called when an image had to be downloaded instead of shared. */
   onDownloadedInstead?: () => void;
+  /**
+   * Called after an image was handed to the OS share sheet, telling the caller
+   * whether the caption also made it into the clipboard as a safety net.
+   */
+  onImageShared?: (captionCopied: boolean) => void;
   /** Called when neither sharing nor the fallback worked. */
   onFailed?: () => void;
+}
+
+const SHARE_TITLE = 'ذکرآرام';
+
+/**
+ * Copies text to the clipboard, falling back to the old `execCommand` path for
+ * the Android WebViews that still don't expose `navigator.clipboard`.
+ */
+export async function copyTextToClipboard(text: string): Promise<boolean> {
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    // Fall through to the textarea trick below.
+  }
+  try {
+    const area = document.createElement('textarea');
+    area.value = text;
+    area.setAttribute('readonly', '');
+    area.style.position = 'fixed';
+    area.style.top = '-1000px';
+    area.style.opacity = '0';
+    document.body.appendChild(area);
+    area.select();
+    const ok = document.execCommand('copy');
+    document.body.removeChild(area);
+    return ok;
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -79,17 +116,16 @@ export async function shareAppText(
   const fullText = appendStoreLinks(text);
   try {
     if (navigator.share) {
-      await navigator.share({ text: fullText, title: 'ذکرآرام' });
+      await navigator.share({ text: fullText, title: SHARE_TITLE });
       return;
     }
   } catch {
     // User cancelled or the share sheet failed — fall through to clipboard.
     return;
   }
-  try {
-    await navigator.clipboard.writeText(fullText);
+  if (await copyTextToClipboard(fullText)) {
     handlers.onCopiedToClipboard?.();
-  } catch {
+  } else {
     handlers.onFailed?.();
   }
 }
@@ -108,6 +144,38 @@ export function downloadImageFile(blob: Blob, fileName: string) {
 }
 
 /**
+ * دور هفتم / مورد ۱ — the caption MUST always travel with the image, because
+ * the writing burnt into the picture isn't clickable and the store links only
+ * work as real text.
+ *
+ * Two things could silently swallow it before:
+ *
+ *  1. `navigator.canShare` was asked about `{ files }` only, while `share()`
+ *     was then called with `{ files, text, title }` — an unvalidated payload.
+ *     A browser that accepts files but not files+text rejects that call, and
+ *     the old `catch` treated the rejection as "user cancelled" and gave up,
+ *     so neither the image nor the caption went anywhere.
+ *  2. On any browser without file sharing the image was simply downloaded and
+ *     the caption was dropped on the floor with nothing left to paste.
+ *
+ * So now: validate the exact payload, step down one field at a time
+ * (files+text+title → files+text → files), and always keep the caption in the
+ * clipboard so it can be pasted next to the picture whichever app receives it
+ * — several Android share targets accept an image but ignore the text that
+ * comes with it, and that is invisible to the page.
+ */
+function canSharePayload(data: ShareData): boolean {
+  // No canShare at all (older browsers): trust share() with files only when it
+  // exists, and let the try/catch below sort out the rest.
+  if (typeof navigator.canShare !== 'function') return true;
+  try {
+    return navigator.canShare(data);
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Shares a generated image (with the text as its caption) through the
  * standard Web Share API `files` flow, after checking navigator.canShare.
  * Falls back to downloading the file when file sharing isn't available.
@@ -119,21 +187,46 @@ export async function shareAppImage(
   handlers: ShareResultHandlers = {}
 ): Promise<void> {
   const fullText = appendStoreLinks(caption);
+
+  // Started (not awaited) before share() so the click's user activation is
+  // still alive for BOTH calls; the result is read once sharing is over.
+  const clipboardPromise = copyTextToClipboard(fullText);
+
+  let file: File | null = null;
   try {
-    const file = new File([blob], fileName, { type: blob.type || 'image/png' });
-    if (navigator.share && navigator.canShare?.({ files: [file] })) {
-      await navigator.share({ files: [file], text: fullText, title: 'ذکرآرام' });
-      return;
-    }
+    file = new File([blob], fileName, { type: blob.type || 'image/png' });
   } catch {
-    // Cancelled or rejected by the OS share sheet — don't then silently
-    // dump a file into the user's downloads folder.
-    return;
+    file = null;
   }
+
+  if (file && typeof navigator.share === 'function') {
+    // Richest payload first; each step down only drops a field, never the
+    // caption's own delivery (the clipboard copy above backs that up).
+    const attempts: ShareData[] = [
+      { files: [file], text: fullText, title: SHARE_TITLE },
+      { files: [file], text: fullText },
+      { files: [file] },
+    ];
+    for (const payload of attempts) {
+      if (!canSharePayload(payload)) continue;
+      try {
+        await navigator.share(payload);
+        handlers.onImageShared?.(await clipboardPromise);
+        return;
+      } catch (err) {
+        // AbortError = the user closed the share sheet on purpose. Anything
+        // else means this payload shape was refused, so try a simpler one.
+        if ((err as DOMException)?.name === 'AbortError') return;
+      }
+    }
+  }
+
   try {
     downloadImageFile(blob, fileName);
-    handlers.onDownloadedInstead?.();
   } catch {
     handlers.onFailed?.();
+    return;
   }
+  await clipboardPromise;
+  handlers.onDownloadedInstead?.();
 }

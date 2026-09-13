@@ -89,7 +89,19 @@ export const StoryImageComposer: React.FC<StoryImageComposerProps> = ({ onImageA
       // of a colon while no store has a link yet.
       const caption = buildInviteLine();
       await shareAppImage(blob, 'zekraram-story.png', caption, {
-        onDownloadedInstead: () => showToast('تصویر در گوشی شما دانلود شد.', { kind: 'success' }),
+        onImageShared: (captionCopied) => {
+          if (captionCopied) {
+            showToast('متن معرفی و لینک‌ها هم کپی شد؛ اگه همراه عکس نرفت، همون‌جا بچسبونش 🌿', {
+              kind: 'success',
+              durationMs: 5000,
+            });
+          }
+        },
+        onDownloadedInstead: () =>
+          showToast('تصویر در گوشی شما دانلود شد و متن معرفی هم کپی شد.', {
+            kind: 'success',
+            durationMs: 5000,
+          }),
         onFailed: () => showToast('اشتراک‌گذاری انجام نشد، دوباره امتحان کن 🌿', { kind: 'info' }),
       });
     } catch {

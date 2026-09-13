@@ -8,6 +8,10 @@ import { useToast } from '../../components/ToastProvider';
 
 type CounterShareOption = 'text' | 'image';
 
+/** دور هفتم / مورد ۱ — shown after the picture goes out, so the caption is never lost. */
+const CAPTION_COPIED_MESSAGE =
+  'متن ذکرهای امروز هم کپی شد؛ اگه همراه عکس نرفت، همون‌جا بچسبونش 🌿';
+
 interface CounterShareModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -50,9 +54,20 @@ export const CounterShareModal: React.FC<CounterShareModalProps> = ({
     try {
       const blob = await generateCounterImage(imageInput);
       // The text option's wording travels with the image as its caption.
+      // دور هفتم / مورد ۱ — the caption travels with the image through
+      // share.ts; the toast only tells the user about the clipboard copy that
+      // backs it up, because some apps accept the picture and drop the text.
       await shareAppImage(blob, 'zekraram-counter.png', caption, {
+        onImageShared: (captionCopied) => {
+          if (captionCopied) {
+            showToast(CAPTION_COPIED_MESSAGE, { kind: 'success', durationMs: 5000 });
+          }
+        },
         onDownloadedInstead: () =>
-          showToast('تصویر در گوشی شما دانلود شد.', { kind: 'success' }),
+          showToast('تصویر در گوشی شما دانلود شد و متن ذکرهای امروز هم کپی شد.', {
+            kind: 'success',
+            durationMs: 5000,
+          }),
         onFailed: () => showToast('متأسفانه تصویر ساخته نشد. یه‌بار دیگه امتحان کن 🌿', { kind: 'info' }),
       });
       onClose();
