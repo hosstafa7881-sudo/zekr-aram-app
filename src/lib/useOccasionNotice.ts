@@ -9,6 +9,8 @@ import {
 import { getOccasionMood } from '../data/religiousOccasions';
 import { NOWRUZ_MESSAGE, OccasionMood, buildOccasionNotice } from './occasionMessages';
 import { useToast } from '../components/ToastProvider';
+import { syncOccasionSchedule } from './notifications';
+import { isNativePlatform } from './native';
 
 export interface OccasionNoticeSettings {
   /** «اعلان مناسبت‌های مذهبی» — the Hijri/lunar religious calendar. */
@@ -73,10 +75,29 @@ export function buildTodaysOccasionNotices(
   return notices;
 }
 
+/** The notice text for a day N days from now, or '' when that day has none. */
+function noticeForDayOffset(settings: OccasionNoticeSettings, dayOffset: number): string {
+  const day = new Date();
+  day.setDate(day.getDate() + dayOffset);
+  // «هر نوع اعلان، در هر روز حداکثر یک‌بار» — a day with several notices is
+  // still ONE notification, its lines joined.
+  return buildTodaysOccasionNotices(settings, day).join('\n');
+}
+
 /** Shows today's occasion notices once per day, respecting the two switches in the «مناسبت‌ها» tab. */
 export function useOccasionNotice(todayDateKey: string, settings: OccasionNoticeSettings) {
   const { showToast } = useToast();
   const { religiousEnabled, nationalEnabled } = settings;
+
+  // دور هشتم / مورد ۳ — on the phone the occasion notices are also handed to
+  // the OS, so they arrive on the day itself rather than only when the app
+  // happens to be open. Re-armed (never appended) whenever a switch changes.
+  useEffect(() => {
+    if (!isNativePlatform()) return;
+    void syncOccasionSchedule((dayOffset) =>
+      noticeForDayOffset({ religiousEnabled, nationalEnabled }, dayOffset)
+    );
+  }, [religiousEnabled, nationalEnabled]);
 
   useEffect(() => {
     if (wasOccasionNoticeShownToday(todayDateKey)) return;

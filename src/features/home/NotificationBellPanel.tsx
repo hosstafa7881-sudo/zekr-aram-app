@@ -22,6 +22,7 @@ import {
   REMINDER_MESSAGE_MAX_LENGTH,
   getNotificationPermission,
   isNotificationSupported,
+  refreshNotificationPermission,
   requestNotificationPermission,
   resolveReminderMessage,
   sendTestNotification,
@@ -101,6 +102,10 @@ export const NotificationBellPanel: React.FC<NotificationBellPanelProps> = ({
       setHourText(savedHour);
       setMinuteText(savedMinute);
       setCustomDraft(settings.reminderCustomMessage || '');
+      // دور هشتم / مورد ۳ — on Android the permission lives in the OS, so it
+      // is read asynchronously and can have changed in the phone's settings
+      // since the panel was last open.
+      void refreshNotificationPermission().then(setPermission);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
