@@ -15,6 +15,7 @@ import { useTrialGate } from '../../lib/useTrialGate';
 import { NotebookItemDef, NotebookDayEntry } from '../notebook/notebookTypes';
 import { HistorySearchCalendar } from './HistorySearchCalendar';
 import { Last30DaysView } from './Last30DaysView';
+import { saveDocumentToDevice } from '../../lib/saveFile';
 import { getRollingDays } from '../../utils/jalali';
 import {
   Calendar,
@@ -43,6 +44,20 @@ interface HistoryBackupViewProps {
   onDeleteDailyLog: (dateKey: string) => void;
   guard: (featureId: LockedFeatureId, onAllowed: () => void, customLockedMessage?: string) => void;
 }
+
+/**
+ * دور هشتم — the backup's three outcomes, worded honestly.
+ *
+ * The success line now also says WHERE the file went, because on Android it
+ * lands in the phone's Downloads folder rather than wherever a browser would
+ * have put it, and a backup the user cannot find again is no backup.
+ */
+const BACKUP_SAVED_MESSAGE =
+  'فایل پشتیبان در پوشه‌ی «دانلودها»ی گوشی ذخیره شد. می‌توانید آن را در جای امن نگه دارید.';
+const BACKUP_DENIED_MESSAGE =
+  'برای ذخیره‌ی فایل پشتیبان، باید به برنامه اجازه‌ی دسترسی به حافظه رو بدی. از تنظیمات گوشی می‌تونی روشنش کنی.';
+const BACKUP_FAILED_MESSAGE =
+  'فایل پشتیبان ذخیره نشد. لطفاً دوباره امتحان کنید — تا وقتی این پیام را می‌بینید، پشتیبانی گرفته نشده است.';
 
 export const HistoryBackupView: React.FC<HistoryBackupViewProps> = ({
   dhikrs,
@@ -107,7 +122,7 @@ export const HistoryBackupView: React.FC<HistoryBackupViewProps> = ({
   });
   const maxDayCount = Math.max(100, ...last7Days.map((d) => d.count));
 
-  const handleExportJSON = () => {
+  const handleExportJSON = async () => {
     try {
       // مورد ۱۸ — the ۱۰۰٪-code state lives in its own localStorage keys, so it
       // has to travel with the backup explicitly or a restore would silently
@@ -125,19 +140,24 @@ export const HistoryBackupView: React.FC<HistoryBackupViewProps> = ({
         }
       );
       const blob = new Blob([jsonStr], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `zikraram-backup-${shamsiToday.dateKey}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      const fileName = `zikraram-backup-${shamsiToday.dateKey}.json`;
 
-      setStatusMessage({
-        type: 'success',
-        text: 'فایل پشتیبان با موفقیت دانلود شد. می‌توانید آن را در جای امن نگه دارید.',
-      });
+      // دور هشتم — THE most important honesty fix in the app. This used to be
+      // an `<a download>` click followed by an unconditional «با موفقیت دانلود
+      // شد». Inside the Android WebView that anchor writes nothing at all, so
+      // the user was told their history was safely backed up when no file
+      // existed — and a backup is the only thing protecting years of records.
+      const saved = await saveDocumentToDevice(blob, fileName);
+      if (saved.status === 'saved') {
+        setStatusMessage({
+          type: 'success',
+          text: BACKUP_SAVED_MESSAGE,
+        });
+      } else if (saved.status === 'denied') {
+        setStatusMessage({ type: 'error', text: BACKUP_DENIED_MESSAGE });
+      } else {
+        setStatusMessage({ type: 'error', text: BACKUP_FAILED_MESSAGE });
+      }
     } catch {
       setStatusMessage({ type: 'error', text: 'خطا در ساخت فایل پشتیبان.' });
     }

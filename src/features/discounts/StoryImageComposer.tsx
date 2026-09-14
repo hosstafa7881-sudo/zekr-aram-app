@@ -7,7 +7,7 @@ import {
   generateStoryPreviewDataUrl,
 } from '../../lib/storyImage';
 import { buildInviteLine, shareAppImage } from '../../lib/share';
-import { saveImageToDevice, timestampedFileName } from '../../lib/saveImage';
+import { saveImageToDevice, timestampedFileName } from '../../lib/saveFile';
 import { useToast } from '../../components/ToastProvider';
 
 /** دور هشتم / مورد ۴ — honest wording for the two ways saving can fail. */

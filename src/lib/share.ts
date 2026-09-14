@@ -16,6 +16,7 @@
 
 import { getAvailableStoreLinks } from '../config/storeLinks';
 import { blobToBase64, isNativePlatform } from './native';
+import { downloadInBrowser } from './saveFile';
 
 /** True when at least one store link has been filled in. */
 export function hasStoreLinks(): boolean {
@@ -159,18 +160,11 @@ export async function shareAppText(
   }
 }
 
-/** Triggers a plain browser download of a generated image file (web only). */
-export function downloadImageFile(blob: Blob, fileName: string) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = fileName;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  // Give the browser a tick to start the download before revoking.
-  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
+/**
+ * Re-exported so the one browser-download implementation lives in saveFile.ts
+ * alongside the native one it is the fallback for.
+ */
+export { downloadInBrowser as downloadImageFile } from './saveFile';
 
 function canSharePayload(data: ShareData): boolean {
   if (typeof navigator.canShare !== 'function') return true;
@@ -260,7 +254,7 @@ export async function shareAppImage(
   }
 
   try {
-    downloadImageFile(blob, fileName);
+    downloadInBrowser(blob, fileName);
   } catch {
     handlers.onFailed?.();
     return;

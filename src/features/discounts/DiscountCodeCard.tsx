@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Copy, Check } from 'lucide-react';
 import { toPersianDigits } from '../../utils/persian';
 import { formatCodeExpiryDate } from '../../lib/discounts';
+import { copyTextToClipboard } from '../../lib/share';
 
 interface DiscountCodeCardProps {
   message: string;
@@ -24,12 +25,14 @@ export const DiscountCodeCard: React.FC<DiscountCodeCardProps> = ({
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(code);
+    // دور هشتم — through the shared helper, which falls back to the old
+    // execCommand trick for the Android WebViews that expose no
+    // navigator.clipboard at all. Raw navigator.clipboard simply threw there,
+    // so the copy button did nothing and said nothing.
+    // «کپی شد» is still shown ONLY on a real copy.
+    if (await copyTextToClipboard(code)) {
       setCopied(true);
       setTimeout(() => setCopied(false), 1800);
-    } catch {
-      // Ignore — nothing more we can do without a backend
     }
   };
 
