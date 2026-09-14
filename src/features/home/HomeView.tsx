@@ -168,6 +168,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
         onClose={() => setIsBellOpen(false)}
         settings={settings}
         onUpdateSettings={onUpdateSettings}
+        todayHasAnyDhikr={(todayLog?.totalCount || 0) > 0}
       />
       <SupportUsModal isOpen={isSupportOpen} onClose={() => setIsSupportOpen(false)} />
     </div>

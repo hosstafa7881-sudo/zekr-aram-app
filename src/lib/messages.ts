@@ -42,6 +42,38 @@ export const REMINDER_PHONE_PERMISSION_GUIDE = [
   '(مسیر دقیق ممکنه بسته به مدل گوشی کمی فرق کنه.)',
 ];
 
+/**
+ * دور نهم / مورد ۴ — the second half of the guide, and the half that actually
+ * matters on the user's own phone.
+ *
+ * «ارسال پیام آزمایشی» worked and the daily reminder never arrived. That gap is
+ * the signature of a phone that shows notifications but kills the alarm that
+ * would have produced one: on Xiaomi/MIUI, Huawei, Samsung and others, an app
+ * that is not allowed to auto-start — or that battery saving is «optimising» —
+ * has its scheduled alarms dropped the moment the app is not in the foreground.
+ * No amount of code inside the app can grant itself those two settings, so the
+ * only honest fix is to tell the user exactly where they are.
+ */
+export const REMINDER_BACKGROUND_GUIDE = [
+  'اگه پیام آزمایشی میاد ولی یادآوری روزانه نمیاد، یعنی گوشیت اجازه‌ی «کار در پس‌زمینه» رو به برنامه نداده.',
+  'روی گوشی‌های شیائومی: تنظیمات ⟵ برنامه‌ها ⟵ ذکرآرام ⟵ «اجرای خودکار» (Autostart) رو روشن کن، و توی «صرفه‌جویی باتری» گزینه‌ی «بدون محدودیت» رو انتخاب کن.',
+  'روی بقیه‌ی گوشی‌ها: تنظیمات ⟵ باتری ⟵ ذکرآرام ⟵ «بهینه‌سازی باتری» رو خاموش کن.',
+];
+
+/** دور نهم / مورد ۴ — the live readout of what the phone is really holding. */
+export const REMINDER_STATUS_TITLE = 'وضعیت یادآوری روی گوشی';
+export const REMINDER_STATUS_ARMED = (whenLabel: string) =>
+  `یادآوری روی گوشیت ثبت شده ✅ اولین یادآوری: ${whenLabel}`;
+export const REMINDER_STATUS_NONE =
+  'الان هیچ یادآوری‌ای روی گوشیت ثبت نیست. دکمه‌ی «ثبت یادآوری» رو بزن.';
+export const REMINDER_STATUS_INEXACT =
+  'گوشیت اجازه‌ی «هشدار دقیق» نداده، برای همین ممکنه یادآوری چند دقیقه دیرتر برسه.';
+export const REMINDER_STATUS_EXACT_BUTTON = 'روشن کردن هشدار دقیق';
+
+/** دور نهم / مورد ۴ — «ثبت یادآوری» when the phone did not actually take it. */
+export const REMINDER_SAVE_FAILED_TOAST =
+  'یادآوری روی گوشیت ثبت نشد. لطفاً اعلان‌های برنامه رو از تنظیمات گوشی روشن کن و دوباره امتحان کن.';
+
 /** NEW TEXT (needs the user's confirmation) — shown when notification permission was refused. */
 export const REMINDER_PERMISSION_DENIED_MESSAGE =
   'برای اینکه یادآوری کار کنه، باید اجازه‌ی نمایش اعلان رو بدی. بدون این اجازه، پیام یادآوری روی گوشیت نمایش داده نمیشه 🌿';

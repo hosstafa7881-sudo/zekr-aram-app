@@ -115,6 +115,7 @@ export async function sendTestNotification(message: string): Promise<'sent' | 'd
   if (isNativePlatform()) {
     try {
       const { LocalNotifications } = await import('@capacitor/local-notifications');
+      await ensureChannel();
       await LocalNotifications.schedule({
         notifications: [
           {
@@ -122,6 +123,7 @@ export async function sendTestNotification(message: string): Promise<'sent' | 'd
             id: 1,
             title: NOTIFICATION_TITLE,
             body: message,
+            channelId: CHANNEL_ID,
             // A moment in the future: an immediate schedule is dropped by some
             // Android builds as "already past".
             schedule: { at: new Date(Date.now() + 800) },
@@ -152,11 +154,48 @@ interface PendingNotification {
 }
 
 /**
+ * دور نهم — one named, high-importance channel for everything this app sends.
+ *
+ * Without an explicit channel the notifications land in Capacitor's own default
+ * one, at default importance. Two consequences, both of which look to the user
+ * exactly like «the reminder never arrived»: some phones (MIUI in particular)
+ * give an app's unnamed default channel the quietest treatment they have, and
+ * the user cannot find the right switch in the phone's own notification
+ * settings because the channel has no name they recognise. A named channel at
+ * high importance fixes both, and is also what the guide text can point at.
+ */
+const CHANNEL_ID = 'zekraram-reminders';
+let channelReady = false;
+
+async function ensureChannel(): Promise<void> {
+  if (!isNativePlatform() || channelReady) return;
+  try {
+    const { LocalNotifications } = await import('@capacitor/local-notifications');
+    await LocalNotifications.createChannel({
+      id: CHANNEL_ID,
+      name: 'یادآوری و مناسبت‌ها',
+      description: 'یادآوری روزانه‌ی ذکر و اعلان مناسبت‌های تقویم',
+      importance: 5,
+      visibility: 1,
+      vibration: true,
+    });
+    channelReady = true;
+  } catch {
+    // An older Android has no channels at all; scheduling still works.
+    channelReady = true;
+  }
+}
+
+/**
  * Replaces every notification in an id range with a fresh set. Cancelling
  * first is what makes this safe to call on every app open: the window is
  * rebuilt, never appended to, so a notification can not pile up twice.
  */
-async function replaceScheduled(idBase: number, span: number, next: PendingNotification[]) {
+async function replaceScheduled(
+  idBase: number,
+  span: number,
+  next: PendingNotification[]
+): Promise<number> {
   const { LocalNotifications } = await import('@capacitor/local-notifications');
 
   const pending = await LocalNotifications.getPending();
@@ -166,13 +205,14 @@ async function replaceScheduled(idBase: number, span: number, next: PendingNotif
   }
 
   const future = next.filter((n) => n.at.getTime() > Date.now() + 1000);
-  if (future.length === 0) return;
+  if (future.length === 0) return 0;
 
   const build = (allowWhileIdle: boolean) => ({
     notifications: future.map((n) => ({
       id: n.id,
       title: n.title,
       body: n.body,
+      channelId: CHANNEL_ID,
       schedule: { at: n.at, allowWhileIdle },
     })),
   });
@@ -186,6 +226,13 @@ async function replaceScheduled(idBase: number, span: number, next: PendingNotif
     // better than no reminder at all.
     await LocalNotifications.schedule(build(false));
   }
+
+  // دور نهم — and then ASK THE PHONE. Everything above can run without error
+  // and still leave nothing armed; the user reported exactly that, and the app
+  // had no way to tell, because it never looked. Counting what the OS actually
+  // holds is the difference between «ثبت شد» being a claim and being a fact.
+  const after = await LocalNotifications.getPending();
+  return after.notifications.filter((n) => n.id >= idBase && n.id < idBase + span).length;
 }
 
 function atTimeOnDay(dayOffset: number, hour: number, minute: number): Date {
@@ -205,41 +252,140 @@ export interface ReminderScheduleOptions {
 }
 
 /**
+ * دور نهم — what arming the reminder actually achieved.
+ *
+ * 'armed'         — the OS is holding N reminders; `nextAt` is the first one.
+ * 'browser'       — not the Android app, so nothing to arm (development only).
+ * 'no-permission' — the phone has not granted permission to show notifications.
+ * 'off'           — the reminder switch is off; nothing armed on purpose.
+ * 'failed'        — we tried and the phone is holding nothing. Never call this
+ *                   a success: it is precisely the state the user was in when
+ *                   the app told them «ثبت شد» and no reminder ever arrived.
+ */
+export interface ReminderScheduleResult {
+  status: 'armed' | 'browser' | 'no-permission' | 'off' | 'failed';
+  count: number;
+  nextAt: Date | null;
+  reason?: string;
+}
+
+/**
  * Arms the rolling daily-reminder window. Safe and cheap to call repeatedly;
  * it always rebuilds rather than adds.
  */
-export async function syncDailyReminderSchedule(options: ReminderScheduleOptions): Promise<void> {
-  if (!isNativePlatform()) return;
+export async function syncDailyReminderSchedule(
+  options: ReminderScheduleOptions
+): Promise<ReminderScheduleResult> {
+  const nothing = (status: ReminderScheduleResult['status'], reason?: string) =>
+    ({ status, count: 0, nextAt: null, reason }) as ReminderScheduleResult;
+
+  if (!isNativePlatform()) return nothing('browser');
   if (getNotificationPermission() !== 'granted') {
     await refreshNotificationPermission();
-    if (getNotificationPermission() !== 'granted') return;
+    if (getNotificationPermission() !== 'granted') return nothing('no-permission');
   }
 
   const [hh, mm] = options.reminderTime.split(':').map((v) => parseInt(v, 10));
-  if (Number.isNaN(hh) || Number.isNaN(mm)) return;
+  if (Number.isNaN(hh) || Number.isNaN(mm)) return nothing('failed', 'BAD_TIME');
+
+  if (!options.reminderEnabled) {
+    try {
+      await replaceScheduled(REMINDER_ID_BASE, REMINDER_WINDOW_DAYS, []);
+    } catch {
+      // Nothing to report — the user turned it off.
+    }
+    return nothing('off');
+  }
+
+  await ensureChannel();
 
   const body = resolveReminderMessage(options.customMessage);
   const pending: PendingNotification[] = [];
-
-  if (options.reminderEnabled) {
-    for (let day = 0; day < REMINDER_WINDOW_DAYS; day++) {
-      // Today is armed only while nothing has been counted yet — the whole
-      // point of the reminder («فقط اگر آن روز هنوز ذکری نگفته باشد»).
-      if (day === 0 && options.todayHasAnyDhikr) continue;
-      pending.push({
-        id: REMINDER_ID_BASE + day,
-        title: NOTIFICATION_TITLE,
-        body,
-        at: atTimeOnDay(day, hh, mm),
-      });
-    }
+  for (let day = 0; day < REMINDER_WINDOW_DAYS; day++) {
+    // Today is armed only while nothing has been counted yet — the whole
+    // point of the reminder («فقط اگر آن روز هنوز ذکری نگفته باشد»).
+    if (day === 0 && options.todayHasAnyDhikr) continue;
+    pending.push({
+      id: REMINDER_ID_BASE + day,
+      title: NOTIFICATION_TITLE,
+      body,
+      at: atTimeOnDay(day, hh, mm),
+    });
   }
 
   try {
-    await replaceScheduled(REMINDER_ID_BASE, REMINDER_WINDOW_DAYS, pending);
+    const count = await replaceScheduled(REMINDER_ID_BASE, REMINDER_WINDOW_DAYS, pending);
+    if (count === 0) return nothing('failed', 'NOTHING_ARMED');
+    const nextAt = pending
+      .map((n) => n.at)
+      .filter((d) => d.getTime() > Date.now())
+      .sort((a, b) => a.getTime() - b.getTime())[0] || null;
+    return { status: 'armed', count, nextAt };
+  } catch (err) {
+    // Scheduling failed outright — say so rather than claim a reminder the
+    // user will never receive.
+    return nothing('failed', String((err as Error)?.message || err || 'unknown'));
+  }
+}
+
+// ─── reading the schedule back ────────────────────────────────────────────
+
+/**
+ * دور نهم — «is a reminder really armed right now?», answered by the phone.
+ *
+ * The user set a daily reminder, the app said «ثبت شد»، and nothing ever
+ * arrived — with the app open or closed. There was no way for either of us to
+ * tell whether the reminder had been armed and the phone was suppressing it, or
+ * whether it had never been armed at all. This makes that visible: the panel
+ * shows the next reminder the OS is actually holding, so the difference stops
+ * being invisible.
+ */
+export interface ArmedReminderInfo {
+  supported: boolean;
+  count: number;
+  nextAt: Date | null;
+  /** Android 12+: exact alarms can be refused, which makes reminders drift. */
+  exactAllowed: boolean | null;
+}
+
+export async function readArmedReminders(): Promise<ArmedReminderInfo> {
+  if (!isNativePlatform()) {
+    return { supported: false, count: 0, nextAt: null, exactAllowed: null };
+  }
+  try {
+    const { LocalNotifications } = await import('@capacitor/local-notifications');
+    const pending = await LocalNotifications.getPending();
+    const mine = pending.notifications.filter(
+      (n) => n.id >= REMINDER_ID_BASE && n.id < REMINDER_ID_BASE + REMINDER_WINDOW_DAYS
+    );
+    const times = mine
+      .map((n) => (n.schedule?.at ? new Date(n.schedule.at) : null))
+      .filter((d): d is Date => !!d && d.getTime() > Date.now())
+      .sort((a, b) => a.getTime() - b.getTime());
+
+    let exactAllowed: boolean | null = null;
+    try {
+      const { exact_alarm } = await LocalNotifications.checkExactNotificationSetting();
+      exactAllowed = exact_alarm === 'granted';
+    } catch {
+      exactAllowed = null;
+    }
+
+    return { supported: true, count: mine.length, nextAt: times[0] || null, exactAllowed };
   } catch {
-    // Scheduling failed outright — say nothing rather than claim a reminder
-    // the user will never receive.
+    return { supported: true, count: 0, nextAt: null, exactAllowed: null };
+  }
+}
+
+/** Android 12+ — opens the system screen where exact alarms are allowed. */
+export async function openExactAlarmSetting(): Promise<boolean> {
+  if (!isNativePlatform()) return false;
+  try {
+    const { LocalNotifications } = await import('@capacitor/local-notifications');
+    const { exact_alarm } = await LocalNotifications.changeExactNotificationSetting();
+    return exact_alarm === 'granted';
+  } catch {
+    return false;
   }
 }
 
@@ -253,6 +399,7 @@ export async function syncOccasionSchedule(
 ): Promise<void> {
   if (!isNativePlatform()) return;
   if (getNotificationPermission() !== 'granted') return;
+  await ensureChannel();
 
   const pending: PendingNotification[] = [];
   for (let day = 0; day < OCCASION_WINDOW_DAYS; day++) {

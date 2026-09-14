@@ -26,13 +26,24 @@ import {
   requestNotificationPermission,
   resolveReminderMessage,
   sendTestNotification,
+  syncDailyReminderSchedule,
+  readArmedReminders,
+  openExactAlarmSetting,
+  type ArmedReminderInfo,
 } from '../../lib/notifications';
 import {
   REMINDER_EXPLAINER,
   REMINDER_EXPLAINER_NOTE,
   REMINDER_PERMISSION_DENIED_MESSAGE,
   REMINDER_PHONE_PERMISSION_GUIDE,
+  REMINDER_BACKGROUND_GUIDE,
   REMINDER_SAVED_TOAST,
+  REMINDER_SAVE_FAILED_TOAST,
+  REMINDER_STATUS_TITLE,
+  REMINDER_STATUS_ARMED,
+  REMINDER_STATUS_NONE,
+  REMINDER_STATUS_INEXACT,
+  REMINDER_STATUS_EXACT_BUTTON,
 } from '../../lib/messages';
 
 interface NotificationBellPanelProps {
@@ -40,6 +51,26 @@ interface NotificationBellPanelProps {
   onClose: () => void;
   settings: UserSettings;
   onUpdateSettings: (next: UserSettings) => void;
+  /** True when a dhikr has already been counted today — today's reminder is then dropped. */
+  todayHasAnyDhikr: boolean;
+}
+
+/** «فردا ساعت ۰۹:۲۴» / «امروز ساعت ۲۱:۳۰» — how the armed reminder is read back. */
+function describeWhen(at: Date): string {
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+  const dayDiff = Math.round((new Date(at).setHours(0, 0, 0, 0) - startOfToday.getTime()) / 86_400_000);
+  const time = toPersianDigits(
+    `${String(at.getHours()).padStart(2, '0')}:${String(at.getMinutes()).padStart(2, '0')}`
+  );
+  const info = getShamsiDateInfo(at);
+  const dayLabel =
+    dayDiff <= 0
+      ? 'امروز'
+      : dayDiff === 1
+      ? 'فردا'
+      : `${info.weekdayName} ${toPersianDigits(info.day)} ${info.monthName}`;
+  return `${dayLabel} ساعت ${time}`;
 }
 
 type PanelTab = 'reminder' | 'occasions';
@@ -74,6 +105,7 @@ export const NotificationBellPanel: React.FC<NotificationBellPanelProps> = ({
   onClose,
   settings,
   onUpdateSettings,
+  todayHasAnyDhikr,
 }) => {
   const [tab, setTab] = useState<PanelTab>('reminder');
   const [permission, setPermission] = useState(getNotificationPermission());
@@ -94,6 +126,14 @@ export const NotificationBellPanel: React.FC<NotificationBellPanelProps> = ({
   // «✏️ نوشتن پیام دلخواه» link; it is always open, so there is no open/closed
   // state left to keep.
   const [customDraft, setCustomDraft] = useState(settings.reminderCustomMessage || '');
+  // دور نهم / مورد ۴ — what the PHONE says it is holding, not what the app
+  // hopes it armed. Everything else in this panel is the app talking about
+  // itself; this one line is the only thing that can contradict it.
+  const [armed, setArmed] = useState<ArmedReminderInfo | null>(null);
+
+  const refreshArmed = React.useCallback(() => {
+    void readArmedReminders().then(setArmed);
+  }, []);
 
   // Re-sync the local free-typing fields from settings each time the panel
   // opens (e.g. after a backup restore changed reminderTime while closed).
@@ -106,6 +146,7 @@ export const NotificationBellPanel: React.FC<NotificationBellPanelProps> = ({
       // is read asynchronously and can have changed in the phone's settings
       // since the panel was last open.
       void refreshNotificationPermission().then(setPermission);
+      refreshArmed();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
@@ -187,7 +228,30 @@ export const NotificationBellPanel: React.FC<NotificationBellPanelProps> = ({
       reminderTime: time,
       reminderCustomMessage: customDraft.trim(),
     });
-    showToast(REMINDER_SAVED_TOAST(toPersianDigits(time)), { kind: 'success', durationMs: 5000 });
+
+    // دور نهم / مورد ۴ — «ثبت شد ✅» used to be printed the instant the settings
+    // were written, before anything had been handed to the phone at all. The
+    // user set a reminder, read that line, and no reminder ever came. So now the
+    // schedule is armed HERE and awaited, and the confirmation is only printed
+    // when the phone confirms it is holding something.
+    const result = await syncDailyReminderSchedule({
+      reminderEnabled: true,
+      reminderTime: time,
+      todayHasAnyDhikr,
+      customMessage: customDraft.trim(),
+    });
+    refreshArmed();
+
+    if (result.status === 'armed' || result.status === 'browser') {
+      showToast(REMINDER_SAVED_TOAST(toPersianDigits(time)), { kind: 'success', durationMs: 5000 });
+    } else {
+      showToast(REMINDER_SAVE_FAILED_TOAST, { kind: 'info', durationMs: 7000 });
+    }
+  };
+
+  const handleEnableExactAlarms = async () => {
+    await openExactAlarmSetting();
+    refreshArmed();
   };
 
   return (
@@ -370,6 +434,51 @@ export const NotificationBellPanel: React.FC<NotificationBellPanelProps> = ({
                       </button>
                     </div>
                   </div>
+                </div>
+
+                {/* دور نهم / مورد ۴ — read straight back from the phone. */}
+                {armed?.supported && (
+                  <div
+                    data-testid="reminder-armed-status"
+                    className="bg-[var(--bg)] border border-[var(--border)] rounded-2xl p-3 space-y-1.5"
+                  >
+                    <div className="text-[11px] font-bold text-[var(--text)]">
+                      {REMINDER_STATUS_TITLE}
+                    </div>
+                    <p className="text-[11px] text-[var(--muted)] leading-relaxed">
+                      {armed.nextAt
+                        ? REMINDER_STATUS_ARMED(describeWhen(armed.nextAt))
+                        : REMINDER_STATUS_NONE}
+                    </p>
+                    {armed.exactAllowed === false && (
+                      <>
+                        <p className="text-[10px] text-[var(--muted)]/90 leading-relaxed">
+                          {REMINDER_STATUS_INEXACT}
+                        </p>
+                        <button
+                          type="button"
+                          data-testid="reminder-exact-button"
+                          onClick={handleEnableExactAlarms}
+                          className="text-[10px] font-bold text-[var(--accent)]"
+                        >
+                          {REMINDER_STATUS_EXACT_BUTTON}
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
+
+                {/* دور نهم / مورد ۴ — the settings no code can grant itself. */}
+                <div
+                  data-testid="reminder-background-guide"
+                  className="bg-[var(--bg)] border border-[var(--border)] rounded-2xl p-3 space-y-1"
+                >
+                  {REMINDER_BACKGROUND_GUIDE.map((line, i) => (
+                    <p key={i} className="text-[10px] text-[var(--muted)] leading-relaxed">
+                      {i === 0 ? '⚠️ ' : ''}
+                      {line}
+                    </p>
+                  ))}
                 </div>
 
                 <div className="grid grid-cols-1 gap-2">
