@@ -115,7 +115,7 @@ export async function sendTestNotification(message: string): Promise<'sent' | 'd
   if (isNativePlatform()) {
     try {
       const { LocalNotifications } = await import('@capacitor/local-notifications');
-      await ensureChannel();
+      const channelId = await ensureChannel();
       await LocalNotifications.schedule({
         notifications: [
           {
@@ -123,7 +123,7 @@ export async function sendTestNotification(message: string): Promise<'sent' | 'd
             id: 1,
             title: NOTIFICATION_TITLE,
             body: message,
-            channelId: CHANNEL_ID,
+            ...(channelId ? { channelId } : {}),
             // A moment in the future: an immediate schedule is dropped by some
             // Android builds as "already past".
             schedule: { at: new Date(Date.now() + 800) },
@@ -165,10 +165,21 @@ interface PendingNotification {
  * high importance fixes both, and is also what the guide text can point at.
  */
 const CHANNEL_ID = 'zekraram-reminders';
-let channelReady = false;
+let channelState: 'unknown' | 'ready' | 'unavailable' = 'unknown';
 
-async function ensureChannel(): Promise<void> {
-  if (!isNativePlatform() || channelReady) return;
+/**
+ * Returns the channel id to schedule against, or undefined when there is no
+ * channel to use.
+ *
+ * That distinction matters more than it looks: naming a channel that does not
+ * exist makes Android 8+ drop the notification WITHOUT any error — the same
+ * silent failure this whole round is about. So if creating it fails, we go back
+ * to the plugin's own default channel rather than pointing at nothing.
+ */
+async function ensureChannel(): Promise<string | undefined> {
+  if (!isNativePlatform()) return undefined;
+  if (channelState === 'ready') return CHANNEL_ID;
+  if (channelState === 'unavailable') return undefined;
   try {
     const { LocalNotifications } = await import('@capacitor/local-notifications');
     await LocalNotifications.createChannel({
@@ -179,10 +190,12 @@ async function ensureChannel(): Promise<void> {
       visibility: 1,
       vibration: true,
     });
-    channelReady = true;
+    channelState = 'ready';
+    return CHANNEL_ID;
   } catch {
-    // An older Android has no channels at all; scheduling still works.
-    channelReady = true;
+    // Older Android has no channels at all, and then the default is correct.
+    channelState = 'unavailable';
+    return undefined;
   }
 }
 
@@ -197,6 +210,7 @@ async function replaceScheduled(
   next: PendingNotification[]
 ): Promise<number> {
   const { LocalNotifications } = await import('@capacitor/local-notifications');
+  const channelId = await ensureChannel();
 
   const pending = await LocalNotifications.getPending();
   const mine = pending.notifications.filter((n) => n.id >= idBase && n.id < idBase + span);
@@ -212,7 +226,7 @@ async function replaceScheduled(
       id: n.id,
       title: n.title,
       body: n.body,
-      channelId: CHANNEL_ID,
+      ...(channelId ? { channelId } : {}),
       schedule: { at: n.at, allowWhileIdle },
     })),
   });
@@ -296,8 +310,6 @@ export async function syncDailyReminderSchedule(
     }
     return nothing('off');
   }
-
-  await ensureChannel();
 
   const body = resolveReminderMessage(options.customMessage);
   const pending: PendingNotification[] = [];
@@ -399,7 +411,6 @@ export async function syncOccasionSchedule(
 ): Promise<void> {
   if (!isNativePlatform()) return;
   if (getNotificationPermission() !== 'granted') return;
-  await ensureChannel();
 
   const pending: PendingNotification[] = [];
   for (let day = 0; day < OCCASION_WINDOW_DAYS; day++) {
