@@ -18,6 +18,7 @@ import { Last30DaysView } from './Last30DaysView';
 import { saveDocumentToDevice } from '../../lib/saveFile';
 import { shareFile } from '../../lib/share';
 import { getRollingDays } from '../../utils/jalali';
+import { DayDeleteScope } from './DayDeleteDialog';
 import {
   Calendar,
   Download,
@@ -43,7 +44,7 @@ interface HistoryBackupViewProps {
   notebookItems: NotebookItemDef[];
   notebookEntries: NotebookDayEntry[];
   onRestoreBackup: (payload: BackupPayload) => void;
-  onDeleteDailyLog: (dateKey: string) => void;
+  onDeleteDailyLog: (dateKey: string, scope: DayDeleteScope) => void;
   guard: (featureId: LockedFeatureId, onAllowed: () => void, customLockedMessage?: string) => void;
 }
 

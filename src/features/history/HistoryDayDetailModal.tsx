@@ -1,6 +1,7 @@
 import React from 'react';
 import { DailyLog } from '../../lib/db';
 import { NotebookItemDef, NotebookDayEntry } from '../notebook/notebookTypes';
+import { dayHasNotebook } from '../../lib/dayShareText';
 import { toPersianDigits } from '../../utils/persian';
 import { DayShareModal } from './DayShareModal';
 import { useDayShare } from './useDayShare';
@@ -80,7 +81,10 @@ export const HistoryDayDetailModal: React.FC<HistoryDayDetailModalProps> = ({
               </div>
             )}
 
-            {notebookEntry && (checkedCount > 0 || notebookEntry.feelingText) && (
+            {/* دور نهم / مورد ۶الف — the same one flag that decides everywhere
+                else whether this day has a notebook at all, so a day the user
+                never wrote in never shows one. */}
+            {dayHasNotebook({ shamsiDateLabel, log, notebookEntry, notebookItems, allDailyLogs }) && notebookEntry && (
               <div className="bg-[var(--bg)] border border-[var(--border)] rounded-2xl p-3 mb-4">
                 <div className="flex items-center gap-1.5 text-xs font-bold text-[var(--text)] mb-1.5">
                   <CheckCircle2 className="w-3.5 h-3.5 text-[var(--success)]" />

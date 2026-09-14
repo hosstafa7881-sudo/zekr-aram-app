@@ -4,6 +4,7 @@ import { NotebookItemDef, NotebookDayEntry } from '../notebook/notebookTypes';
 import { DayDetailCard } from './DayDetailCard';
 import { NO_DATA_FOR_DAY_MESSAGE } from '../../lib/messages';
 import { X, ChevronRight } from 'lucide-react';
+import { DayDeleteScope } from './DayDeleteDialog';
 
 interface DayFullDetailViewProps {
   isOpen: boolean;
@@ -15,7 +16,7 @@ interface DayFullDetailViewProps {
   notebookItems: NotebookItemDef[];
   /** مورد ۱ — full history for the lifetime star/medal line in shared texts. */
   allDailyLogs: DailyLog[];
-  onDeleteDay: (dateKey: string) => void;
+  onDeleteDay: (dateKey: string, scope: DayDeleteScope) => void;
 }
 
 /** Standalone "جزئیات بیشتر" page for one day — reuses the exact same DayDetailCard as the "جزئیات ۳۰ روز اخیر" list (بخش ت #14). */

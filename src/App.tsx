@@ -31,6 +31,7 @@ import { MedalEarnedModal } from './features/gamification/MedalEarnedModal';
 import {
   NotebookItemDef,
   NotebookDayEntry,
+  DEFAULT_NOTEBOOK_ITEMS,
 } from './features/notebook/notebookTypes';
 import {
   loadNotebookItems,
@@ -54,6 +55,7 @@ import { setFreeExtensionUntil } from './lib/subscription';
 import { CountDiscountModal } from './features/discounts/CountDiscountModal';
 import { ReferralDiscountModal } from './features/discounts/ReferralDiscountModal';
 import { DiscountEarnedModal } from './features/discounts/DiscountEarnedModal';
+import { DayDeleteScope } from './features/history/DayDeleteDialog';
 
 export function App() {
   // مورد ۲ب — self-updating build check (see useAppUpdate.ts).
@@ -271,9 +273,18 @@ export function App() {
     [activeDhikrId]
   );
 
-  // Delete a single day's history entry
-  const handleDeleteDailyLog = useCallback((dateKey: string) => {
-    setDailyLogs((prev) => deleteDailyLog(dateKey, prev));
+  // Delete a single day's history entry.
+  //
+  // دور نهم / مورد ۶ب — this used to remove the day's ذکرها and nothing else,
+  // so the notebook the user had filled in that day could never be deleted at
+  // all. The card now asks which, and this honours the answer.
+  const handleDeleteDailyLog = useCallback((dateKey: string, scope: DayDeleteScope = 'dhikr') => {
+    if (scope === 'dhikr' || scope === 'both') {
+      setDailyLogs((prev) => deleteDailyLog(dateKey, prev));
+    }
+    if (scope === 'notebook' || scope === 'both') {
+      setNotebookEntries((prev) => prev.filter((e) => e.dateKey !== dateKey));
+    }
   }, []);
 
   // Restore full backup JSON
@@ -309,6 +320,14 @@ export function App() {
     setDailyLogs([]);
     setSettings(DEFAULT_SETTINGS);
     saveDailyLogs([]);
+    // دور نهم / مورد ۶د — «پاک کردن کامل داده‌ها» left the notebook untouched:
+    // every day the user had ever filled in, and every checklist item they had
+    // added, survived a reset that promised to erase everything. Both go now,
+    // and the checklist returns to its defaults exactly like the dhikr list.
+    setNotebookItems(DEFAULT_NOTEBOOK_ITEMS);
+    saveNotebookItems(DEFAULT_NOTEBOOK_ITEMS);
+    setNotebookEntries([]);
+    saveNotebookEntries([]);
     setActiveTab('home');
   }, []);
 
@@ -450,7 +469,7 @@ interface MainShellProps {
   onEditDhikr: (updated: DhikrItem) => void;
   onDeleteDhikr: (id: string) => void;
   onRestoreBackup: (payload: BackupPayload) => void;
-  onDeleteDailyLog: (dateKey: string) => void;
+  onDeleteDailyLog: (dateKey: string, scope: DayDeleteScope) => void;
   onUpdateSettings: (settings: UserSettings) => void;
   onHardResetAllData: () => void;
   onAddNotebookItem: (text: string) => void;

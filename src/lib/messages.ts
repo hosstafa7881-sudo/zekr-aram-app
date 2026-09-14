@@ -84,9 +84,21 @@ export const REMINDER_PERMISSION_DENIED_MESSAGE =
 export const STREAK_MESSAGE = (dayCountLabel: string) =>
   `آفرین، ${dayCountLabel} روز پیاپی ذکر گفتی! همین‌طور ادامه بده 🌹`;
 
-// 7. Confirm deleting one day's history
+// 7. Confirm deleting one day's history.
+//
+// دور نهم / مورد ۶ — the old wording was «آیا از حذف ذکرهای ثبت‌شده‌ی این روز
+// مطمئنی؟ …», which named ذکرها specifically. That was accurate when the delete
+// button could only remove ذکرها; now the same button can remove the notebook
+// too, so the sentence must not promise one of the three. The user's own
+// wording covers all three, and is what is used.
 export const DELETE_DAY_HISTORY_CONFIRM_MESSAGE =
-  'آیا از حذف ذکرهای ثبت‌شده‌ی این روز مطمئنی؟ این عمل قابل بازگشت نیست.';
+  'مطمئنی؟ بعد از حذف، این عمل قابل بازگشت نیست.';
+export const DELETE_DAY_CONFIRM_MESSAGE = DELETE_DAY_HISTORY_CONFIRM_MESSAGE;
+
+export const DELETE_DAY_TITLE = 'حذف اطلاعات این روز';
+export const DELETE_DAY_DHIKR_LABEL = 'حذف ذکرها';
+export const DELETE_DAY_NOTEBOOK_LABEL = 'حذف دفترچه';
+export const DELETE_DAY_BOTH_LABEL = 'حذف ذکرها و دفترچه';
 
 // 9. Star earned — dynamic total, built at the call site.
 export const STAR_EARNED_MESSAGE = (totalLabel: string) =>

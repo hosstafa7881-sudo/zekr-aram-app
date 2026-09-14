@@ -6,6 +6,7 @@ import { getJalaliMonthDays, shiftJalaliMonth } from '../../utils/jalali';
 import { HistoryDayDetailModal } from './HistoryDayDetailModal';
 import { DayFullDetailView } from './DayFullDetailView';
 import { ChevronRight, ChevronLeft } from 'lucide-react';
+import { DayDeleteScope } from './DayDeleteDialog';
 
 function formatFullShamsiDate(date: Date): string {
   const info = getShamsiDateInfo(date);
@@ -18,7 +19,7 @@ interface HistorySearchCalendarProps {
   dailyLogs: DailyLog[];
   notebookItems: NotebookItemDef[];
   notebookEntries: NotebookDayEntry[];
-  onDeleteDay: (dateKey: string) => void;
+  onDeleteDay: (dateKey: string, scope: DayDeleteScope) => void;
 }
 
 export const HistorySearchCalendar: React.FC<HistorySearchCalendarProps> = ({
