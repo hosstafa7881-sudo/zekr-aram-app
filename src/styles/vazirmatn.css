@@ -1,0 +1,67 @@
+/*
+ * دور هشتم — Vazirmatn shipped INSIDE the app.
+ *
+ * index.html used to pull the font from fonts.googleapis.com. For a store app
+ * that is wrong twice over:
+ *
+ *   1. The app is offline-first by design (قانون بخش ۱ SKILL.md). With no
+ *      connection the Persian text fell back to whatever system font the phone
+ *      happened to have — on many Android builds that means broken or ugly
+ *      Persian shaping, and a different layout from the one every screen was
+ *      designed and tested against.
+ *   2. Google's font servers are unreliable from Iran, which is exactly where
+ *      this app is published. Even online, the first paint could sit on a
+ *      fallback font or hang.
+ *
+ * The six weights the app actually uses are bundled from the `vazirmatn` npm
+ * package and base64-inlined into the single-file build (see assetsInlineLimit
+ * in vite.config.ts), so the APK carries them and needs no network at all.
+ */
+
+@font-face {
+  font-family: 'Vazirmatn';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('../assets/fonts/Vazirmatn-Regular.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Vazirmatn';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('../assets/fonts/Vazirmatn-Medium.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Vazirmatn';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('../assets/fonts/Vazirmatn-SemiBold.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Vazirmatn';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('../assets/fonts/Vazirmatn-Bold.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Vazirmatn';
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url('../assets/fonts/Vazirmatn-ExtraBold.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Vazirmatn';
+  font-style: normal;
+  font-weight: 900;
+  font-display: swap;
+  src: url('../assets/fonts/Vazirmatn-Black.woff2') format('woff2');
+}

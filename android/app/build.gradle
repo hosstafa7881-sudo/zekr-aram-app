@@ -16,7 +16,32 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    // دور هشتم — a FIXED debug signing key, checked into the repo.
+    //
+    // Without this, Gradle generates ~/.android/debug.keystore on whatever
+    // machine builds the APK. Every GitHub Actions run is a fresh VM, so every
+    // build was signed with a DIFFERENT key — and Android refuses to install an
+    // APK over one signed by another key. The only way to install a new build
+    // was to uninstall the old app first, which DELETES the user's entire
+    // dhikr history along with it.
+    //
+    // With one committed key, each new build installs straight over the last
+    // and the history survives. A debug keystore is not a secret — its password
+    // is public by convention — and it is NOT the key a store release is signed
+    // with; that one comes later and must never be committed.
+    signingConfigs {
+        debug {
+            storeFile file('zekraram-debug.keystore')
+            storePassword 'android'
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
+        }
+    }
+
     buildTypes {
+        debug {
+            signingConfig signingConfigs.debug
+        }
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
