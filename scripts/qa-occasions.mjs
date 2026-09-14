@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { launchChromium } from './lib/browser.mjs';
 import { serveDist } from './lib/server.mjs';
 import { applySeed, buildSeedState } from './lib/seed.mjs';
+import { loadAppModules } from './lib/appModules.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DIST = path.join(ROOT, 'dist');
@@ -22,12 +23,19 @@ function check(name, ok, detail = '') {
   console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? ' — ' + detail : ''}`);
 }
 
+// دور نهم — the app no longer converts qamari dates with `Intl`; it uses the
+// published Iranian calendar, and the two differ by a day in most months. A
+// check that picked its target day with `Intl` would land one day off the day
+// the app marks, see no notice, and report a failure that isn't there — which
+// is exactly what happened. So the target days come from the app's own
+// converter.
+const appHijri = await loadAppModules([
+  { names: ['getHijriDateInfo'], from: 'src/utils/hijri' },
+]);
+
 function hijriOf(date) {
-  const parts = new Intl.DateTimeFormat('en-US-u-ca-islamic', {
-    year: 'numeric', month: 'numeric', day: 'numeric',
-  }).formatToParts(date);
-  const get = (t) => parseInt(parts.find((p) => p.type === t)?.value || '0', 10);
-  return { month: get('month'), day: get('day') };
+  const { month, day } = appHijri.getHijriDateInfo(date);
+  return { month, day };
 }
 
 function jalaliOf(date) {
