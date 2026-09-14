@@ -16,24 +16,52 @@ import { blobToBase64, isNativePlatform } from './native';
 
 export interface SaveResult {
   /**
-   * 'saved'  — really written; safe to tell the user so.
+   * 'saved'  — really written AND read back; safe to tell the user so.
    * 'denied' — the user refused the storage permission (Android 9 and below).
    * 'failed' — everything else. Never report this as success.
    */
   status: 'saved' | 'denied' | 'failed';
   /** Where it landed, when known. For the report, never shown raw. */
   uri?: string;
+  /** A human-readable folder + file name, e.g. «Download/…json». */
+  location?: string;
   /** The underlying reason, for the error message and for debugging. */
   reason?: string;
 }
 
+interface SaveOutcome {
+  uri: string;
+  location?: string;
+}
+
 interface FileSaverPluginShape {
-  saveImageToGallery(options: { data: string; fileName: string; mimeType: string }): Promise<{ uri: string }>;
-  saveFileToDownloads(options: { data: string; fileName: string; mimeType: string }): Promise<{ uri: string }>;
+  saveImageToGallery(options: { data: string; fileName: string; mimeType: string }): Promise<SaveOutcome>;
+  saveFileToDownloads(options: { data: string; fileName: string; mimeType: string }): Promise<SaveOutcome>;
 }
 
 /** Implemented in android/app/src/main/java/com/zekraram/app/FileSaverPlugin.java */
 const FileSaver = registerPlugin<FileSaverPluginShape>('FileSaver');
+
+/**
+ * دور نهم — is this page running inside some WebView rather than a real browser?
+ *
+ * `isNativePlatform()` is the answer we trust, but it is not the answer we can
+ * BET the backup file on: if Capacitor's bridge ever fails to initialise, it
+ * quietly says "web", we fall through to `<a download>`, and the app is right
+ * back to announcing a download that never happened. A page served from
+ * `capacitor://`, `file://` or `http://localhost` is not a browser tab the user
+ * opened — so if we end up on the browser path there, say so instead of
+ * claiming success.
+ */
+function looksLikeAWebView(): boolean {
+  try {
+    const scheme = window.location.protocol;
+    if (scheme === 'capacitor:' || scheme === 'file:' || scheme === 'ionic:') return true;
+    return window.location.hostname === 'localhost' && !!(window as unknown as { Capacitor?: unknown }).Capacitor;
+  } catch {
+    return false;
+  }
+}
 
 /** Triggers a plain browser download. Works in a BROWSER; inert in a WebView. */
 export function downloadInBrowser(blob: Blob, fileName: string) {
@@ -59,16 +87,22 @@ async function save(
       const data = await blobToBase64(blob);
       if (!data) return { status: 'failed', reason: 'the file came out empty' };
       const options = { data, fileName, mimeType };
-      const { uri } =
+      const outcome =
         where === 'gallery'
           ? await FileSaver.saveImageToGallery(options)
           : await FileSaver.saveFileToDownloads(options);
-      return { status: 'saved', uri };
+      return { status: 'saved', uri: outcome.uri, location: outcome.location };
     } catch (err) {
       const reason = String((err as Error)?.message || err || 'unknown');
       if (reason.includes('PERMISSION_DENIED')) return { status: 'denied', reason };
       return { status: 'failed', reason };
     }
+  }
+
+  if (looksLikeAWebView()) {
+    // We are inside the app but the native bridge did not answer. `<a download>`
+    // writes nothing here, so there is nothing honest to claim.
+    return { status: 'failed', reason: 'NATIVE_BRIDGE_UNAVAILABLE' };
   }
 
   try {

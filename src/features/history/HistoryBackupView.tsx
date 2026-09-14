@@ -16,6 +16,7 @@ import { NotebookItemDef, NotebookDayEntry } from '../notebook/notebookTypes';
 import { HistorySearchCalendar } from './HistorySearchCalendar';
 import { Last30DaysView } from './Last30DaysView';
 import { saveDocumentToDevice } from '../../lib/saveFile';
+import { shareFile } from '../../lib/share';
 import { getRollingDays } from '../../utils/jalali';
 import {
   Calendar,
@@ -31,6 +32,7 @@ import {
   Star,
   NotebookPen,
   Clock,
+  Share2,
 } from 'lucide-react';
 
 interface HistoryBackupViewProps {
@@ -58,6 +60,30 @@ const BACKUP_DENIED_MESSAGE =
   'برای ذخیره‌ی فایل پشتیبان، باید به برنامه اجازه‌ی دسترسی به حافظه رو بدی. از تنظیمات گوشی می‌تونی روشنش کنی.';
 const BACKUP_FAILED_MESSAGE =
   'فایل پشتیبان ذخیره نشد. لطفاً دوباره امتحان کنید — تا وقتی این پیام را می‌بینید، پشتیبانی گرفته نشده است.';
+
+/**
+ * دور نهم — the file the user can SEE.
+ *
+ * The previous round said «ذخیره شد» and the user found nothing in Downloads.
+ * Two changes come out of that. First, the success line now names the exact
+ * folder and file the phone reported back, so «ذخیره شد» is checkable instead
+ * of a claim. Second, the failure line carries the phone's own reason: the user
+ * cannot read a log, but they can send a screenshot, and that is the only way a
+ * storage refusal specific to one brand of phone ever gets diagnosed.
+ */
+const backupSavedAtMessage = (location?: string) =>
+  location
+    ? `فایل پشتیبان ذخیره شد: ${location} — می‌توانید آن را در جای امن نگه دارید.`
+    : BACKUP_SAVED_MESSAGE;
+
+const backupFailedMessage = (reason?: string) =>
+  reason ? `${BACKUP_FAILED_MESSAGE} (${reason})` : BACKUP_FAILED_MESSAGE;
+
+const BACKUP_SHARE_CAPTION = 'فایل پشتیبان ذکرآرام';
+const BACKUP_SHARED_MESSAGE =
+  'فایل پشتیبان فرستاده شد. هرجا که ذخیره‌اش کردی، برای بازگردانی همان فایل را انتخاب کن.';
+const BACKUP_SHARE_UNAVAILABLE_MESSAGE =
+  'فرستادن فایل روی این گوشی ممکن نشد. لطفاً از دکمه‌ی «دانلود فایل پشتیبان» استفاده کن.';
 
 export const HistoryBackupView: React.FC<HistoryBackupViewProps> = ({
   dhikrs,
@@ -151,12 +177,48 @@ export const HistoryBackupView: React.FC<HistoryBackupViewProps> = ({
       if (saved.status === 'saved') {
         setStatusMessage({
           type: 'success',
-          text: BACKUP_SAVED_MESSAGE,
+          text: backupSavedAtMessage(saved.location),
         });
       } else if (saved.status === 'denied') {
         setStatusMessage({ type: 'error', text: BACKUP_DENIED_MESSAGE });
       } else {
-        setStatusMessage({ type: 'error', text: BACKUP_FAILED_MESSAGE });
+        setStatusMessage({ type: 'error', text: backupFailedMessage(saved.reason) });
+      }
+    } catch {
+      setStatusMessage({ type: 'error', text: 'خطا در ساخت فایل پشتیبان.' });
+    }
+  };
+
+  /**
+   * دور نهم — the second door. Saving into Downloads goes through the phone
+   * maker's own media provider and some of them simply refuse; the backup is
+   * the only thing protecting years of history, so it must not hang on one
+   * route. This hands the very same file to the share sheet.
+   */
+  const handleShareBackup = async () => {
+    try {
+      const jsonStr = exportBackupJSON(
+        dhikrs,
+        activeDhikrId,
+        dailyLogs,
+        settings,
+        notebookItems,
+        notebookEntries,
+        {
+          freeExtensionUntil: getFreeExtensionUntil(),
+          referralLastUsedAt: getReferralLastUsed(),
+        }
+      );
+      const blob = new Blob([jsonStr], { type: 'application/json' });
+      const fileName = `zikraram-backup-${shamsiToday.dateKey}.json`;
+
+      const result = await shareFile(blob, fileName, 'application/json', BACKUP_SHARE_CAPTION);
+      if (result === 'shared') {
+        setStatusMessage({ type: 'success', text: BACKUP_SHARED_MESSAGE });
+      } else if (result === 'cancelled') {
+        setStatusMessage(null);
+      } else {
+        setStatusMessage({ type: 'error', text: BACKUP_SHARE_UNAVAILABLE_MESSAGE });
       }
     } catch {
       setStatusMessage({ type: 'error', text: 'خطا در ساخت فایل پشتیبان.' });
@@ -213,6 +275,7 @@ export const HistoryBackupView: React.FC<HistoryBackupViewProps> = ({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
         <button
           type="button"
+          data-testid="backup-download"
           onClick={handleExportJSON}
           className="flex items-center justify-center gap-2 bg-[var(--accent)] hover:bg-[var(--accent-light)] text-white text-xs font-bold py-3 px-4 rounded-xl shadow-md transition-all"
         >
@@ -227,6 +290,16 @@ export const HistoryBackupView: React.FC<HistoryBackupViewProps> = ({
         >
           <Upload className="w-4 h-4 text-[var(--accent)]" />
           <span>بازگردانی از فایل پشتیبان</span>
+        </button>
+
+        <button
+          type="button"
+          data-testid="backup-share"
+          onClick={handleShareBackup}
+          className="sm:col-span-2 flex items-center justify-center gap-2 bg-[var(--bg)] hover:bg-[var(--surface-2)] text-[var(--text)] border border-[var(--accent)]/40 text-xs font-bold py-3 px-4 rounded-xl transition-all"
+        >
+          <Share2 className="w-4 h-4 text-[var(--accent)]" />
+          <span>فرستادن فایل پشتیبان به جای دیگر</span>
         </button>
         <input
           ref={fileInputRef}

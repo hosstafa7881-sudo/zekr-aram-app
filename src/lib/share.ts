@@ -262,3 +262,68 @@ export async function shareAppImage(
   await clipboardPromise;
   handlers.onDownloadedInstead?.();
 }
+
+// ──────────────────────────────────────────────────────────────────────────
+// دور نهم — a second way out for the backup file.
+//
+// Saving into the phone's Downloads folder is the primary route, but it runs
+// through the OEM's media provider, and some of them refuse. The backup is the
+// only thing protecting years of the user's history, so it may not depend on a
+// single door: this hands the file straight to the share sheet, where the user
+// can put it in Telegram, Drive, email, or their own files app.
+//
+// Like everything else since the golden rule, it returns what actually
+// happened. 'cancelled' is not a failure and must not be reported as one.
+// ──────────────────────────────────────────────────────────────────────────
+
+export type ShareFileResult = 'shared' | 'cancelled' | 'unavailable' | 'failed';
+
+export async function shareFile(
+  blob: Blob,
+  fileName: string,
+  mimeType: string,
+  caption: string
+): Promise<ShareFileResult> {
+  if (isNativePlatform()) {
+    try {
+      const [{ Share }, { Filesystem, Directory }] = await Promise.all([
+        import('@capacitor/share'),
+        import('@capacitor/filesystem'),
+      ]);
+      const data = await blobToBase64(blob);
+      const written = await Filesystem.writeFile({
+        path: fileName,
+        data,
+        directory: Directory.Cache,
+      });
+      await Share.share({
+        title: SHARE_TITLE,
+        text: caption,
+        url: written.uri,
+        dialogTitle: SHARE_TITLE,
+      });
+      return 'shared';
+    } catch (err) {
+      if (isUserCancellation(err)) return 'cancelled';
+      return 'failed';
+    }
+  }
+
+  let file: File | null = null;
+  try {
+    file = new File([blob], fileName, { type: mimeType });
+  } catch {
+    file = null;
+  }
+  if (!file || typeof navigator.share !== 'function') return 'unavailable';
+
+  const payload: ShareData = { files: [file], title: SHARE_TITLE, text: caption };
+  if (!canSharePayload(payload)) return 'unavailable';
+  try {
+    await navigator.share(payload);
+    return 'shared';
+  } catch (err) {
+    if (isUserCancellation(err)) return 'cancelled';
+    return 'failed';
+  }
+}
