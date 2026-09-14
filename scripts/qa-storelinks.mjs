@@ -1,14 +1,18 @@
-// Verifies everything that only becomes visible ONCE the store links are
-// filled in (مورد ۴ و مورد ۱۹): the links block at the end of shared texts,
-// the "دانلود از …" line on the generated counter image, the bottom box of the
-// story image, and — most importantly — that the QR code on it really decodes
-// back to the Cafe Bazaar URL.
+// Verifies everything that hangs off the store links (مورد ۴ و مورد ۱۹): the
+// links block at the end of shared texts, the "دانلود از …" line on the
+// generated counter image, the bottom box of the story image, and — most
+// importantly — that the QR code on it really decodes back to the Cafe Bazaar
+// URL.
 //
 //   node scripts/qa-storelinks.mjs
 //
-// It temporarily fills src/config/storeLinks.ts, rebuilds, runs the checks and
-// always restores the original file (which must stay empty until the app is
-// actually published).
+// دور نهم — this used to patch src/config/storeLinks.ts, run, and restore it,
+// because the links were deliberately empty and the story image's bottom box
+// was therefore absent. The user reported that absence as a fault, and since
+// both Iranian stores address an app purely by its (already fixed) package
+// name, the links are now real and permanent. So this script no longer patches
+// anything: it checks the shipped configuration, which is the only version
+// worth checking.
 
 import path from 'node:path';
 import fs from 'node:fs';
@@ -36,12 +40,10 @@ function check(name, ok, detail = '') {
 }
 
 async function run() {
-  const original = fs.readFileSync(LINKS_FILE, 'utf8');
-  const patched = original
-    .replace("{ id: 'cafebazaar', label: 'کافه‌بازار', url: '' }", `{ id: 'cafebazaar', label: 'کافه‌بازار', url: '${BAZAAR_URL}' }`)
-    .replace("{ id: 'myket', label: 'مایکت', url: '' }", `{ id: 'myket', label: 'مایکت', url: '${MYKET_URL}' }`);
-  if (patched === original) throw new Error('could not patch storeLinks.ts');
-  fs.writeFileSync(LINKS_FILE, patched);
+  const shipped = fs.readFileSync(LINKS_FILE, 'utf8');
+  if (!shipped.includes(BAZAAR_URL) || !shipped.includes(MYKET_URL)) {
+    throw new Error('storeLinks.ts no longer carries the Cafe Bazaar / Myket addresses');
+  }
 
   let server;
   let browser;
@@ -172,8 +174,6 @@ async function run() {
   } finally {
     if (browser) await browser.close();
     if (server) server.close();
-    fs.writeFileSync(LINKS_FILE, original);
-    execSync('npm run build', { cwd: ROOT, stdio: 'ignore' });
   }
 
   const failed = results.filter((r) => !r.ok);
