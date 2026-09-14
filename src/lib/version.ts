@@ -1,6 +1,6 @@
 // Single source of truth for the app's user-visible version number.
 //
-// Bumped by one on every review round (round 8 → ۸). Two things read it:
+// Bumped by one on every review round (round 9 → ۹). Two things read it:
 //  - the small muted line at the bottom of the Settings page (مورد ۲الف)
 //  - the auto-update check in useAppUpdate.ts, which compares this built-in
 //    number against the freshly-fetched `version.json` on the server so a
@@ -8,7 +8,7 @@
 //
 // IMPORTANT: keep this in sync with `public/version.json` — the file is the
 // server-side copy of the very same number.
-export const APP_VERSION = 8;
+export const APP_VERSION = 9;
 
-/** "نسخه‌ی ۸" — already localized with a Persian digit. */
-export const APP_VERSION_LABEL = 'نسخه‌ی ۸';
+/** "نسخه‌ی ۹" — already localized with a Persian digit. */
+export const APP_VERSION_LABEL = 'نسخه‌ی ۹';
