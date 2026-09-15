@@ -318,6 +318,17 @@ export function App() {
 
   // Hard reset all data
   const handleHardResetAllData = useCallback(() => {
+    // دور دهم — ERASE FIRST, then write the defaults back.
+    //
+    // Order matters here and got it wrong once already: writing the defaults
+    // and then clearing the keys leaves the notebook's checklist absent instead
+    // of reset. src/lib/dataReset.ts decides for EVERY stored key — including
+    // the three that deliberately survive, so the reset cannot become a way to
+    // restart the trial or re-earn the ۱۰۰٪ code — and the defaults are laid
+    // down afterwards.
+    clearAllUserData();
+    clearGamificationState();
+
     setDhikrs(INITIAL_DHIKR_LIST);
     setActiveDhikrId(INITIAL_DHIKR_LIST[0].id);
     setDailyLogs([]);
@@ -331,13 +342,6 @@ export function App() {
     saveNotebookItems(DEFAULT_NOTEBOOK_ITEMS);
     setNotebookEntries([]);
     saveNotebookEntries([]);
-    // دور دهم — and the rest of the survivors. Fixing them one at a time as
-    // they are reported is how this bug kept coming back; src/lib/dataReset.ts
-    // now decides for EVERY stored key, including the three that deliberately
-    // survive so the reset cannot become a way to restart the trial or re-earn
-    // the ۱۰۰٪ code.
-    clearAllUserData();
-    clearGamificationState();
     setActiveTab('home');
   }, []);
 
