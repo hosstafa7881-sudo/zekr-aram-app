@@ -75,8 +75,21 @@ export interface ShareResultHandlers {
   /** Called when an image had to be downloaded instead of shared. */
   onDownloadedInstead?: () => void;
   /**
+   * دور دهم — called the moment the caption is safely on the clipboard, BEFORE
+   * the OS share sheet opens.
+   *
+   * This is the whole point: on Android `Share.share()` does not resolve until
+   * the user comes back from the app they shared into, so anything announced
+   * after it is announced to an empty room. The user put a story on Instagram,
+   * came back minutes later, and only then read «متن هم کپی شد» — exactly when
+   * it was no longer any use. The clipboard write already happens first, so
+   * there is nothing to wait for.
+   */
+  onCaptionCopied?: () => void;
+  /**
    * Called after an image was handed to the OS share sheet, telling the caller
    * whether the caption also had to ride the clipboard as a safety net.
+   * Browser path only — on native, `onCaptionCopied` fires up front instead.
    */
   onImageShared?: (captionCopied: boolean) => void;
   /** Called when neither sharing nor the fallback worked. */
@@ -221,13 +234,17 @@ export async function shareAppImage(
         data,
         directory: Directory.Cache,
       });
+      // دور دهم — tell the user the caption is on the clipboard NOW, while they
+      // are still looking at the app. Awaiting the clipboard here is safe on
+      // native: the share sheet is opened by the OS, not by a click's user
+      // activation, so nothing is lost by resolving one promise first.
+      if (await clipboardPromise) handlers.onCaptionCopied?.();
       await Share.share({
         title: SHARE_TITLE,
         text: fullText,
         url: written.uri,
         dialogTitle: SHARE_TITLE,
       });
-      handlers.onImageShared?.(await clipboardPromise);
       return;
     } catch (err) {
       if (isUserCancellation(err)) return;

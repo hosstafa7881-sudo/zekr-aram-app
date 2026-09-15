@@ -44,7 +44,11 @@ export const RELIGIOUS_OCCASIONS: ReligiousOccasion[] = [
 
   // ربیع‌الاول
   { id: 'shahadat-imam-askari', hijriMonth: 3, hijriDay: 8, title: 'شهادت امام حسن عسکری (ع)', mood: 'sad', isOfficialHoliday: true },
-  { id: 'aghaz-emamat-valiasr', hijriMonth: 3, hijriDay: 9, title: 'آغاز امامت حضرت ولیعصر (عج)', mood: 'happy' },
+  // دور دهم — ۸ است، نه ۹: آغاز امامت هم‌روز با شهادت امام حسن عسکری (ع) است
+  // (۳۰ مرداد ۱۴۰۵)، همان‌طور که تقویم رسمی نشان می‌دهد و کاربر گزارش کرد.
+  // چون آن روز یک مناسبت غم و یک مناسبت شادی دارد، قانون موجود یک اعلان
+  // خنثای واحد با هر دو عنوان می‌سازد.
+  { id: 'aghaz-emamat-valiasr', hijriMonth: 3, hijriDay: 8, title: 'آغاز امامت حضرت ولیعصر (عج)', mood: 'happy' },
   { id: 'milad-payambar-ahle-sonnat', hijriMonth: 3, hijriDay: 12, title: 'میلاد پیامبر اکرم (ص) به روایت اهل سنت — آغاز هفته وحدت', mood: 'happy' },
   { id: 'veladat-payambar-imam-sadiq', hijriMonth: 3, hijriDay: 17, title: 'ولادت پیامبر اکرم (ص) و امام جعفر صادق (ع)', mood: 'happy', isOfficialHoliday: true },
 

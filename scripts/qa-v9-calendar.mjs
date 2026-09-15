@@ -48,6 +48,8 @@ const OCCASIONS = [
   ['tasua', 4, 3], ['ashura', 4, 4], ['shahadat-imam-sajjad', 4, 6],
   ['arbaeen', 5, 13], ['rehlat-payambar-shahadat-imam-hassan', 5, 21],
   ['shahadat-imam-reza', 5, 22], ['shahadat-imam-askari', 5, 30],
+  // دور دهم — هم‌روز با شهادت امام حسن عسکری (ع)، طبق تقویم رسمی.
+  ['aghaz-emamat-valiasr', 5, 30],
   ['milad-payambar-ahle-sonnat', 6, 3], ['veladat-payambar-imam-sadiq', 6, 8],
   ['veladat-imam-askari', 6, 29], ['vafat-masoumeh', 6, 31],
   ['veladat-zeinab', 7, 24],

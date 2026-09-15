@@ -105,6 +105,12 @@ export const StoryImageComposer: React.FC<StoryImageComposerProps> = ({ onImageA
       // of a colon while no store has a link yet.
       const caption = buildInviteLine();
       await shareAppImage(blob, 'zekraram-story.png', caption, {
+        // دور دهم — fires before the share sheet opens (see share.ts).
+        onCaptionCopied: () =>
+          showToast('متن معرفی و لینک‌ها هم کپی شد؛ اگه همراه عکس نرفت، همون‌جا بچسبونش 🌿', {
+            kind: 'success',
+            durationMs: 5000,
+          }),
         onImageShared: (captionCopied) => {
           if (captionCopied) {
             showToast('متن معرفی و لینک‌ها هم کپی شد؛ اگه همراه عکس نرفت، همون‌جا بچسبونش 🌿', {
