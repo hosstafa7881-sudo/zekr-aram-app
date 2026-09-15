@@ -26,6 +26,9 @@ import { useGamificationEvents } from './lib/useGamificationEvents';
 import { useOccasionNotice } from './lib/useOccasionNotice';
 import { useDailyReminder } from './lib/useDailyReminder';
 import { useAppUpdate } from './lib/useAppUpdate';
+import { clearAllUserData } from './lib/dataReset';
+import { FEATURES } from './config/features';
+import { clearGamificationState } from './lib/gamification';
 import { CelebrationModal } from './features/gamification/CelebrationModal';
 import { MedalEarnedModal } from './features/gamification/MedalEarnedModal';
 import {
@@ -328,6 +331,13 @@ export function App() {
     saveNotebookItems(DEFAULT_NOTEBOOK_ITEMS);
     setNotebookEntries([]);
     saveNotebookEntries([]);
+    // دور دهم — and the rest of the survivors. Fixing them one at a time as
+    // they are reported is how this bug kept coming back; src/lib/dataReset.ts
+    // now decides for EVERY stored key, including the three that deliberately
+    // survive so the reset cannot become a way to restart the trial or re-earn
+    // the ۱۰۰٪ code.
+    clearAllUserData();
+    clearGamificationState();
     setActiveTab('home');
   }, []);
 
@@ -694,8 +704,10 @@ function MainShell(props: MainShellProps) {
         onGoToPaywall={goToPaywallFromDiscount}
       />
 
+      {/* دور دهم — gated at the render too, not only at the button, so the
+          feature cannot be reached by any other route while it is off. */}
       <ReferralDiscountModal
-        isOpen={isReferralModalOpen}
+        isOpen={FEATURES.referralDiscount && isReferralModalOpen}
         onClose={() => setIsReferralModalOpen(false)}
         eligible={referralDiscount.eligible}
         activatedAt={referralDiscount.activatedAt}

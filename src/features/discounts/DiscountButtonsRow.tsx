@@ -2,6 +2,7 @@ import React from 'react';
 import { Tag, Gift } from 'lucide-react';
 import { toPersianDigits } from '../../utils/persian';
 import { ActiveDiscountCode } from '../../lib/discounts';
+import { FEATURES } from '../../config/features';
 
 interface DiscountButtonsRowProps {
   activeCountDiscount: ActiveDiscountCode | null;
@@ -17,8 +18,15 @@ export const DiscountButtonsRow: React.FC<DiscountButtonsRowProps> = ({
   onOpenReferralDiscount,
   className = '',
 }) => {
+  // دور دهم — while the ۱۰۰٪ code is switched off for the Cafe Bazaar
+  // submission, the remaining button takes the whole width rather than leaving
+  // an empty half-row where the other one used to be.
+  const showReferral = FEATURES.referralDiscount;
   return (
-    <div data-testid="discount-buttons-row" className={`grid grid-cols-2 gap-2 ${className}`}>
+    <div
+      data-testid="discount-buttons-row"
+      className={`grid ${showReferral ? 'grid-cols-2' : 'grid-cols-1'} gap-2 ${className}`}
+    >
       <button
         type="button"
         onClick={onOpenCountDiscount}
@@ -32,14 +40,17 @@ export const DiscountButtonsRow: React.FC<DiscountButtonsRowProps> = ({
         </span>
       </button>
 
-      <button
-        type="button"
-        onClick={onOpenReferralDiscount}
-        className="flex items-center justify-center gap-1.5 h-11 px-2.5 rounded-2xl text-white text-xs font-bold shadow-sm transition-all bg-[color-mix(in_oklab,var(--accent)_55%,teal_45%)] hover:bg-[color-mix(in_oklab,var(--accent-light)_55%,teal_45%)]"
-      >
-        <Gift className="w-4 h-4 shrink-0" />
-        <span className="truncate">کد تخفیف ۱۰۰ درصدی</span>
-      </button>
+      {showReferral && (
+        <button
+          type="button"
+          data-testid="discount-referral-button"
+          onClick={onOpenReferralDiscount}
+          className="flex items-center justify-center gap-1.5 h-11 px-2.5 rounded-2xl text-white text-xs font-bold shadow-sm transition-all bg-[color-mix(in_oklab,var(--accent)_55%,teal_45%)] hover:bg-[color-mix(in_oklab,var(--accent-light)_55%,teal_45%)]"
+        >
+          <Gift className="w-4 h-4 shrink-0" />
+          <span className="truncate">کد تخفیف ۱۰۰ درصدی</span>
+        </button>
+      )}
     </div>
   );
 };

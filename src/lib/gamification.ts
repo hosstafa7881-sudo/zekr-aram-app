@@ -155,3 +155,31 @@ export function saveGamificationState(state: GamificationState) {
     // Ignore storage quota issues
   }
 }
+
+/**
+ * دور دهم — forget every milestone already announced.
+ *
+ * «پاک کردن کامل داده‌ها» left this key untouched, and it holds
+ * `lastSeenStarCount`. If that was ۱ before the wipe, then the very next star
+ * earned afterwards is also ۱, `1 > 1` is false, and the user gets no message
+ * for their first star — the announcements only resume from the second. That is
+ * exactly what the user reported, down to the detail that the star itself still
+ * appeared (it is computed from the lifetime total, not from this key).
+ *
+ * Same family as the notebook survivor fixed last round. A wipe that promises to
+ * erase everything has to be audited key by key — see the list in App.tsx.
+ */
+export const GAMIFICATION_RESET_EVENT = 'zekraram:gamification-reset';
+
+export function clearGamificationState() {
+  try {
+    localStorage.removeItem(STATE_KEY);
+  } catch {
+    // Ignore storage errors — the reset must not fail because of them.
+  }
+  try {
+    window.dispatchEvent(new Event(GAMIFICATION_RESET_EVENT));
+  } catch {
+    // Ignore — the listener is a convenience, the storage clear is the fix.
+  }
+}
