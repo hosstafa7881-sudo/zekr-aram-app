@@ -27,7 +27,14 @@ const ANDROID_PACKAGE_NAME = 'com.zekraram.app';
 
 export const STORE_LINKS: StoreLink[] = [
   { id: 'cafebazaar', label: 'کافه‌بازار', url: `https://cafebazaar.ir/app/${ANDROID_PACKAGE_NAME}` },
-  { id: 'myket', label: 'مایکت', url: `https://myket.ir/app/${ANDROID_PACKAGE_NAME}` },
+  // دور دهم — عمداً خالی تا انتشار اول در کافه‌بازار انجام شود.
+  //
+  // نگرانی کاربر بجاست: بردن نام یک فروشگاه دیگر داخل برنامه‌ای که برای بررسی
+  // به کافه‌بازار می‌رود، ممکن است حساسیت ایجاد کند. برداشتنش یک خط است و هیچ
+  // هزینه‌ای ندارد؛ یک دور رد شدن هزینه دارد. ردیف سر جایش می‌ماند تا برای
+  // انتشار در مایکت فقط همین آدرس برگردد:
+  //     `https://myket.ir/app/${ANDROID_PACKAGE_NAME}`
+  { id: 'myket', label: 'مایکت', url: '' },
   { id: 'googleplay', label: 'گوگل‌پلی', url: '' },
 ];
 

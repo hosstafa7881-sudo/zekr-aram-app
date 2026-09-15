@@ -41,8 +41,9 @@ function check(name, ok, detail = '') {
 
 async function run() {
   const shipped = fs.readFileSync(LINKS_FILE, 'utf8');
-  if (!shipped.includes(BAZAAR_URL) || !shipped.includes(MYKET_URL)) {
-    throw new Error('storeLinks.ts no longer carries the Cafe Bazaar / Myket addresses');
+  // دور دهم — مایکت عمداً تا بعد از انتشار در کافه‌بازار خالی است.
+  if (!shipped.includes(BAZAAR_URL)) {
+    throw new Error('storeLinks.ts no longer carries the Cafe Bazaar address');
   }
 
   let server;
@@ -75,11 +76,14 @@ async function run() {
     await page.waitForTimeout(400);
     const text = await page.evaluate(() => navigator.clipboard.readText());
     fs.writeFileSync(path.join(OUT, 'share-text-with-links.txt'), text);
-    check('مورد۴ قالب لینک‌ها در انتهای متن',
-      text.includes(`📥 کافه‌بازار: ${BAZAAR_URL}`) && text.includes(`📥 مایکت: ${MYKET_URL}`));
-    check('مورد۴ فروشگاه بدون لینک (گوگل‌پلی) در متن نمی‌آید', !text.includes('گوگل‌پلی'));
-    check('مورد۶ با وجود لینک، جمله‌ی دعوت با دونقطه تمام می‌شود',
-      text.includes('تو هم می‌تونی امتحانش کنی:\n📥'));
+    // دور دهم — آدرس روی خط خودش، و یک خط خالی قبل از بلوک لینک‌ها.
+    check('مورد۴ نام فروشگاه و آدرسش روی دو خط جدا',
+      text.includes(`📥 کافه‌بازار:\n${BAZAAR_URL}`),
+      text.trim().split('\n').slice(-2).join(' ⏎ '));
+    check('مورد۴ فروشگاه بدون لینک در متن نمی‌آید',
+      !text.includes('گوگل‌پلی') && !text.includes('مایکت'));
+    check('مورد۶ بین جمله‌ی دعوت و لینک‌ها یک خط خالی هست',
+      text.includes('تو هم می‌تونی امتحانش کنی:\n\n📥'));
 
     // مورد ۶ — the generated counter image gains its "دانلود از …" line.
     await page.getByTestId('counter-share-icon').click();
@@ -103,8 +107,9 @@ async function run() {
     // Scan at x=120: inside the box but well clear of its centred text, so a
     // glyph never breaks the white run being measured.
     const promoHeight = await whiteBoxHeight(context, counterFile, 120, 40);
-    check('مورد۴الف کادر سفید تصویر شمارش سه‌خطی است (۲۸۰ پیکسل، نه ۲۱۰)',
-      Math.abs(promoHeight - 280) <= 6, `height=${promoHeight}px`);
+    // دور دهم — خط «دانلود از …» فاصله‌ی یک‌خطی گرفت، پس کادر ۳۱۰ شد نه ۲۸۰.
+    check('مورد۴الف کادر سفید تصویر شمارش سه‌خطی و جادار است (۳۱۰ پیکسل)',
+      Math.abs(promoHeight - 310) <= 8, `height=${promoHeight}px`);
     await cropTo(context, counterFile, path.join(OUT, 'v6-counter-promo-box.png'), {
       x: 40,
       y: counterSize.height - 350,

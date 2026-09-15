@@ -102,9 +102,12 @@ async function testCounterShareTextAndImage(browser) {
   // derived from the package name and were the reason the story image had no
   // bottom box), so the invite line ends with a colon and the links follow.
   // گوگل‌پلی still has none and must stay out of the text entirely.
-  check('مورد۴ با وجود لینک، جمله‌ی دعوت با دونقطه تمام می‌شود و لینک‌ها زیرش می‌آیند',
-    text.includes('تو هم می‌تونی امتحانش کنی:\n📥'), text.trim().split('\n').slice(-3).join(' / '));
-  check('مورد۴ فروشگاه بدون لینک (گوگل‌پلی) در متن نمی‌آید', !text.includes('گوگل‌پلی'));
+  check('مورد۴ بین جمله‌ی دعوت و لینک‌ها یک خط خالی هست',
+    text.includes('تو هم می‌تونی امتحانش کنی:\n\n📥'), text.trim().split('\n').slice(-3).join(' ⏎ '));
+  check('مورد۴ آدرس فروشگاه روی خط خودش می‌آید',
+    /📥 [^\n:]+:\nhttps:\/\//.test(text));
+  check('مورد۴ فروشگاه بدون لینک در متن نمی‌آید',
+    !text.includes('گوگل‌پلی') && !text.includes('مایکت'));
 
   // Generated counter image — captured through the download fallback.
   await page.getByTestId('counter-share-icon').click();

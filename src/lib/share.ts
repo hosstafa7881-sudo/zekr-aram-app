@@ -33,9 +33,14 @@ export function hasStoreLinks(): boolean {
  * Returns '' while no store link is configured (nothing is shown at all).
  */
 export function buildStoreLinksBlock(): string {
+  // دور دهم — هر فروشگاه دو خط: نامش، و آدرسش روی خط خودش.
+  //
+  // «📥 کافه‌بازار: https://…» روی یک خط، در تلگرام و اینستاگرام وسط آدرس
+  // می‌شکند و به‌هم‌ریخته دیده می‌شود. آدرس روی خط خودش هم مرتب‌تر است هم
+  // راحت‌تر لمس می‌شود. بلوک هر فروشگاه با یک خط خالی از بعدی جدا می‌شود.
   return getAvailableStoreLinks()
-    .map((s) => `📥 ${s.label}: ${s.url}`)
-    .join('\n');
+    .map((s) => `📥 ${s.label}:\n${s.url}`)
+    .join('\n\n');
 }
 
 /** "دانلود از کافه‌بازار و مایکت" — store NAMES only, for generated images. Returns '' when no store has a link. */
@@ -57,8 +62,11 @@ export function buildInviteLine(): string {
 
 /** Appends the store-links block to a text, when there is one. */
 export function appendStoreLinks(text: string): string {
+  // دور دهم — یک خط خالی، نه یک خط. متن و لینک‌ها دو چیزند و چسبیدنشان به هم
+  // کل کپشن را بی‌نظم نشان می‌داد. همه‌ی متن‌های اشتراک‌گذاری از همین‌جا رد
+  // می‌شوند، پس این یک تغییر همه‌جا را مرتب می‌کند.
   const block = buildStoreLinksBlock();
-  return block ? `${text}\n${block}` : text;
+  return block ? `${text}\n\n${block}` : text;
 }
 
 export interface ShareResultHandlers {
