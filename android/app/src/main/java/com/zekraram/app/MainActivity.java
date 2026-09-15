@@ -10,6 +10,7 @@ public class MainActivity extends BridgeActivity {
         // دور هشتم — must be registered BEFORE super.onCreate(), which
         // is when the bridge builds its plugin registry.
         registerPlugin(FileSaverPlugin.class);
+        registerPlugin(ReminderAlarmPlugin.class);
         super.onCreate(savedInstanceState);
     }
 }

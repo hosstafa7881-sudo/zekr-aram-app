@@ -18,6 +18,17 @@
 // the app cannot know yet.
 
 import { isNativePlatform } from './native';
+import {
+  armReminders,
+  armOccasionNotices,
+  armSingleReminder,
+  cancelAllReminders,
+  readArmedAlarms,
+  OCCASION_SLOT_BASE,
+  OCCASION_SLOT_COUNT,
+  TEST_REMINDER_SLOT,
+  type ReminderSlot,
+} from './reminderAlarm';
 
 export const REMINDER_MESSAGE =
   'امروز هنوز ذکری نگفتی، می‌خوای با گفتن ذکر، بیشتر به یاد خدا باشی؟ 📿';
@@ -31,9 +42,6 @@ const NOTIFICATION_TITLE = 'ذکرآرام';
 const REMINDER_WINDOW_DAYS = 14;
 /** How many days ahead occasion notices are armed. */
 const OCCASION_WINDOW_DAYS = 45;
-/** Notification id ranges, kept apart so one type never cancels the other. */
-const REMINDER_ID_BASE = 10_000;
-const OCCASION_ID_BASE = 20_000;
 /** The hour an occasion notice arrives, when the day has one. */
 const OCCASION_HOUR = 9;
 
@@ -146,13 +154,6 @@ export async function sendTestNotification(message: string): Promise<'sent' | 'd
 
 // ─── native scheduling ────────────────────────────────────────────────────
 
-interface PendingNotification {
-  id: number;
-  title: string;
-  body: string;
-  at: Date;
-}
-
 /**
  * دور نهم — one named, high-importance channel for everything this app sends.
  *
@@ -161,21 +162,16 @@ interface PendingNotification {
  * exactly like «the reminder never arrived»: some phones (MIUI in particular)
  * give an app's unnamed default channel the quietest treatment they have, and
  * the user cannot find the right switch in the phone's own notification
- * settings because the channel has no name they recognise. A named channel at
- * high importance fixes both, and is also what the guide text can point at.
+ * settings because the channel has no name they recognise.
+ *
+ * Returns the id to schedule against, or undefined when there is no channel to
+ * use — naming a channel that does not exist makes Android 8+ drop the
+ * notification WITHOUT any error, the same silent failure as everything else
+ * this area of the app has been fighting.
  */
 const CHANNEL_ID = 'zekraram-reminders';
 let channelState: 'unknown' | 'ready' | 'unavailable' = 'unknown';
 
-/**
- * Returns the channel id to schedule against, or undefined when there is no
- * channel to use.
- *
- * That distinction matters more than it looks: naming a channel that does not
- * exist makes Android 8+ drop the notification WITHOUT any error — the same
- * silent failure this whole round is about. So if creating it fails, we go back
- * to the plugin's own default channel rather than pointing at nothing.
- */
 async function ensureChannel(): Promise<string | undefined> {
   if (!isNativePlatform()) return undefined;
   if (channelState === 'ready') return CHANNEL_ID;
@@ -199,62 +195,19 @@ async function ensureChannel(): Promise<string | undefined> {
   }
 }
 
-/**
- * Replaces every notification in an id range with a fresh set. Cancelling
- * first is what makes this safe to call on every app open: the window is
- * rebuilt, never appended to, so a notification can not pile up twice.
- */
-async function replaceScheduled(
-  idBase: number,
-  span: number,
-  next: PendingNotification[]
-): Promise<number> {
-  const { LocalNotifications } = await import('@capacitor/local-notifications');
-  const channelId = await ensureChannel();
-
-  const pending = await LocalNotifications.getPending();
-  const mine = pending.notifications.filter((n) => n.id >= idBase && n.id < idBase + span);
-  if (mine.length > 0) {
-    await LocalNotifications.cancel({ notifications: mine.map((n) => ({ id: n.id })) });
-  }
-
-  const future = next.filter((n) => n.at.getTime() > Date.now() + 1000);
-  if (future.length === 0) return 0;
-
-  const build = (allowWhileIdle: boolean) => ({
-    notifications: future.map((n) => ({
-      id: n.id,
-      title: n.title,
-      body: n.body,
-      ...(channelId ? { channelId } : {}),
-      schedule: { at: n.at, allowWhileIdle },
-    })),
-  });
-
-  try {
-    // allowWhileIdle keeps the reminder on its minute instead of drifting into
-    // a Doze batch — it needs SCHEDULE_EXACT_ALARM, which the user can refuse.
-    await LocalNotifications.schedule(build(true));
-  } catch {
-    // Refused: an inexact alarm still arrives, just not to the minute. Far
-    // better than no reminder at all.
-    await LocalNotifications.schedule(build(false));
-  }
-
-  // دور نهم — and then ASK THE PHONE. Everything above can run without error
-  // and still leave nothing armed; the user reported exactly that, and the app
-  // had no way to tell, because it never looked. Counting what the OS actually
-  // holds is the difference between «ثبت شد» being a claim and being a fact.
-  const after = await LocalNotifications.getPending();
-  return after.notifications.filter((n) => n.id >= idBase && n.id < idBase + span).length;
-}
-
-function atTimeOnDay(dayOffset: number, hour: number, minute: number): Date {
-  const d = new Date();
-  d.setDate(d.getDate() + dayOffset);
-  d.setHours(hour, minute, 0, 0);
-  return d;
-}
+// دور دهم — the scheduling helpers that lived here are gone.
+//
+// They built a JavaScript `Date` from the user's chosen time and handed that
+// instant to @capacitor/local-notifications. That is precisely what made the
+// reminder arrive an hour late: the WebView decided what «۲۱:۲۸» was worth in
+// UTC and Android decided again in reverse, and on a ROM whose tzdata still
+// carries Iran's pre-2022 daylight saving the two answers differ by an hour.
+//
+// Everything scheduled by wall-clock time now goes through
+// src/lib/reminderAlarm.ts, which sends the hour and the minute and lets
+// Android work out the moment in its own zone. The Capacitor plugin is still
+// used for «ارسال پیام آزمایشی», which is a duration rather than a time of day
+// and so was never affected.
 
 export interface ReminderScheduleOptions {
   reminderEnabled: boolean;
@@ -304,41 +257,96 @@ export async function syncDailyReminderSchedule(
 
   if (!options.reminderEnabled) {
     try {
-      await replaceScheduled(REMINDER_ID_BASE, REMINDER_WINDOW_DAYS, []);
+      await cancelAllReminders();
     } catch {
       // Nothing to report — the user turned it off.
     }
     return nothing('off');
   }
 
+  await ensureChannel();
+
+  // دور دهم — the hour and the minute travel; the instant does not.
+  //
+  // Everything here used to build a `Date` from the user's chosen time and send
+  // that across, which meant the WebView decided what «۲۱:۲۸» was worth in UTC
+  // and Android decided again in reverse. When the two disagreed — and on a
+  // stale-tzdata ROM in شهریور they disagree by an hour — the reminder simply
+  // landed an hour late. Now Android computes the moment itself, in its own
+  // zone, from the wall-clock numbers.
   const body = resolveReminderMessage(options.customMessage);
-  const pending: PendingNotification[] = [];
+  const slots: ReminderSlot[] = [];
   for (let day = 0; day < REMINDER_WINDOW_DAYS; day++) {
     // Today is armed only while nothing has been counted yet — the whole
     // point of the reminder («فقط اگر آن روز هنوز ذکری نگفته باشد»).
     if (day === 0 && options.todayHasAnyDhikr) continue;
-    pending.push({
-      id: REMINDER_ID_BASE + day,
+    slots.push({
+      slot: day,
+      dayOffset: day,
+      hour: hh,
+      minute: mm,
       title: NOTIFICATION_TITLE,
       body,
-      at: atTimeOnDay(day, hh, mm),
+      channelId: CHANNEL_ID,
     });
   }
 
   try {
-    const count = await replaceScheduled(REMINDER_ID_BASE, REMINDER_WINDOW_DAYS, pending);
-    if (count === 0) return nothing('failed', 'NOTHING_ARMED');
-    const nextAt = pending
-      .map((n) => n.at)
+    const armed = await armReminders(slots);
+    if (armed.length === 0) return nothing('failed', 'NOTHING_ARMED');
+    // The time the SYSTEM settled on, not the one we hoped for.
+    const nextAt = armed
+      .map((a) => new Date(a.at))
       .filter((d) => d.getTime() > Date.now())
       .sort((a, b) => a.getTime() - b.getTime())[0] || null;
-    return { status: 'armed', count, nextAt };
+    return { status: 'armed', count: armed.length, nextAt };
   } catch (err) {
     // Scheduling failed outright — say so rather than claim a reminder the
     // user will never receive.
     return nothing('failed', String((err as Error)?.message || err || 'unknown'));
   }
 }
+
+/**
+ * دور دهم — a reminder for a few minutes from now, through the very same alarm
+ * path the daily reminder uses.
+ *
+ * «ارسال پیام آزمایشی» shows a notification immediately and never touches the
+ * phone's scheduling at all, which is why it always worked and never proved
+ * anything. This one is a real scheduled alarm: close the app, wait, and the
+ * answer is unambiguous.
+ */
+export async function scheduleTestReminder(
+  minutes: number,
+  customMessage?: string
+): Promise<{ status: 'armed' | 'failed' | 'no-permission' | 'browser'; at: Date | null }> {
+  if (!isNativePlatform()) return { status: 'browser', at: null };
+  if (getNotificationPermission() !== 'granted') {
+    await refreshNotificationPermission();
+    if (getNotificationPermission() !== 'granted') return { status: 'no-permission', at: null };
+  }
+  const channelId = await ensureChannel();
+  try {
+    const armed = await armSingleReminder({
+      slot: TEST_REMINDER_SLOT,
+      // Minutes from now — a duration, not a time of day. The wall-clock path
+      // is the right tool for «هر روز ساعت ۹»، not for «۲ دقیقه بعد».
+      inMinutes: minutes,
+      hour: 0,
+      minute: 0,
+      title: NOTIFICATION_TITLE,
+      body: resolveReminderMessage(customMessage),
+      channelId,
+    });
+    if (!armed) return { status: 'failed', at: null };
+    return { status: 'armed', at: new Date(armed.at) };
+  } catch {
+    return { status: 'failed', at: null };
+  }
+}
+
+/** When our reminders actually fired — re-exported so the panel has one import. */
+export { readDeliveryLog, type DeliveredReminder } from './reminderAlarm';
 
 // ─── reading the schedule back ────────────────────────────────────────────
 
@@ -365,25 +373,25 @@ export async function readArmedReminders(): Promise<ArmedReminderInfo> {
     return { supported: false, count: 0, nextAt: null, exactAllowed: null };
   }
   try {
-    const { LocalNotifications } = await import('@capacitor/local-notifications');
-    const pending = await LocalNotifications.getPending();
-    const mine = pending.notifications.filter(
-      (n) => n.id >= REMINDER_ID_BASE && n.id < REMINDER_ID_BASE + REMINDER_WINDOW_DAYS
-    );
-    const times = mine
-      .map((n) => (n.schedule?.at ? new Date(n.schedule.at) : null))
-      .filter((d): d is Date => !!d && d.getTime() > Date.now())
-      .sort((a, b) => a.getTime() - b.getTime());
+    // دور دهم — asked of the SYSTEM, not of our own bookkeeping.
+    //
+    // This used to read the Capacitor plugin's getPending(), which returns the
+    // records that plugin saved for itself. That answers «did the app write
+    // this down», not «is the phone holding an alarm» — so the card could say
+    // «ثبت شده» about a reminder the phone knew nothing about. Now it is a
+    // PendingIntent lookup against the alarm manager.
+    const { count, nextAt } = await readArmedAlarms();
 
     let exactAllowed: boolean | null = null;
     try {
+      const { LocalNotifications } = await import('@capacitor/local-notifications');
       const { exact_alarm } = await LocalNotifications.checkExactNotificationSetting();
       exactAllowed = exact_alarm === 'granted';
     } catch {
       exactAllowed = null;
     }
 
-    return { supported: true, count: mine.length, nextAt: times[0] || null, exactAllowed };
+    return { supported: true, count, nextAt, exactAllowed };
   } catch {
     return { supported: true, count: 0, nextAt: null, exactAllowed: null };
   }
@@ -411,22 +419,32 @@ export async function syncOccasionSchedule(
 ): Promise<void> {
   if (!isNativePlatform()) return;
   if (getNotificationPermission() !== 'granted') return;
+  const channelId = await ensureChannel();
 
-  const pending: PendingNotification[] = [];
+  // دور دهم — occasion notices carried the SAME wall-clock bug as the daily
+  // reminder: ۹ صبح was converted to an instant here and converted back by
+  // Android, so on a stale-tzdata ROM they would have drifted by the same hour.
+  // They now go through the app's own alarm plugin, which is handed the hour
+  // and the minute and works the moment out in the phone's own zone.
+  const slots: ReminderSlot[] = [];
   for (let day = 0; day < OCCASION_WINDOW_DAYS; day++) {
     const body = noticesForDay(day);
     if (!body) continue;
-    // «هر نوع اعلان، در هر روز حداکثر یک‌بار» — one entry per day, by id.
-    pending.push({
-      id: OCCASION_ID_BASE + day,
+    // «هر نوع اعلان، در هر روز حداکثر یک‌بار» — one entry per day, by slot.
+    if (slots.length >= OCCASION_SLOT_COUNT) break;
+    slots.push({
+      slot: OCCASION_SLOT_BASE + slots.length,
+      dayOffset: day,
+      hour: OCCASION_HOUR,
+      minute: 0,
       title: NOTIFICATION_TITLE,
       body,
-      at: atTimeOnDay(day, OCCASION_HOUR, 0),
+      channelId,
     });
   }
 
   try {
-    await replaceScheduled(OCCASION_ID_BASE, OCCASION_WINDOW_DAYS, pending);
+    await armOccasionNotices(slots);
   } catch {
     // Same rule: silence beats a false promise.
   }

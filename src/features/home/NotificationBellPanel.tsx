@@ -29,7 +29,10 @@ import {
   syncDailyReminderSchedule,
   readArmedReminders,
   openExactAlarmSetting,
+  scheduleTestReminder,
+  readDeliveryLog,
   type ArmedReminderInfo,
+  type DeliveredReminder,
 } from '../../lib/notifications';
 import {
   REMINDER_EXPLAINER,
@@ -44,6 +47,12 @@ import {
   REMINDER_STATUS_NONE,
   REMINDER_STATUS_INEXACT,
   REMINDER_STATUS_EXACT_BUTTON,
+  REMINDER_STATUS_TODAY_SKIPPED,
+  REMINDER_TEST_SCHEDULE_BUTTON,
+  REMINDER_TEST_SCHEDULED_TOAST,
+  REMINDER_TEST_FAILED_TOAST,
+  REMINDER_LOG_TITLE,
+  REMINDER_LOG_EMPTY,
 } from '../../lib/messages';
 
 interface NotificationBellPanelProps {
@@ -55,14 +64,19 @@ interface NotificationBellPanelProps {
   todayHasAnyDhikr: boolean;
 }
 
+/** «۰۹:۲۴» in Persian digits, from the phone's own clock. */
+function timeLabelOf(at: Date): string {
+  return toPersianDigits(
+    `${String(at.getHours()).padStart(2, '0')}:${String(at.getMinutes()).padStart(2, '0')}`
+  );
+}
+
 /** «فردا ساعت ۰۹:۲۴» / «امروز ساعت ۲۱:۳۰» — how the armed reminder is read back. */
 function describeWhen(at: Date): string {
   const startOfToday = new Date();
   startOfToday.setHours(0, 0, 0, 0);
   const dayDiff = Math.round((new Date(at).setHours(0, 0, 0, 0) - startOfToday.getTime()) / 86_400_000);
-  const time = toPersianDigits(
-    `${String(at.getHours()).padStart(2, '0')}:${String(at.getMinutes()).padStart(2, '0')}`
-  );
+  const time = timeLabelOf(at);
   const info = getShamsiDateInfo(at);
   const dayLabel =
     dayDiff <= 0
@@ -130,9 +144,13 @@ export const NotificationBellPanel: React.FC<NotificationBellPanelProps> = ({
   // hopes it armed. Everything else in this panel is the app talking about
   // itself; this one line is the only thing that can contradict it.
   const [armed, setArmed] = useState<ArmedReminderInfo | null>(null);
+  // دور دهم — when reminders actually fired, straight from the phone. Two
+  // rounds were spent unable to tell «نیامد» from «آمد و ندیدمش».
+  const [delivered, setDelivered] = useState<DeliveredReminder[]>([]);
 
   const refreshArmed = React.useCallback(() => {
     void readArmedReminders().then(setArmed);
+    void readDeliveryLog().then(setDelivered);
   }, []);
 
   // Re-sync the local free-typing fields from settings each time the panel
@@ -252,6 +270,24 @@ export const NotificationBellPanel: React.FC<NotificationBellPanelProps> = ({
   const handleEnableExactAlarms = async () => {
     await openExactAlarmSetting();
     refreshArmed();
+  };
+
+  const handleScheduleTest = async () => {
+    const result = await scheduleTestReminder(2, customDraft.trim());
+    refreshArmed();
+    if (result.status === 'armed' && result.at) {
+      showToast(REMINDER_TEST_SCHEDULED_TOAST(timeLabelOf(result.at)), {
+        kind: 'success',
+        durationMs: 7000,
+      });
+    } else if (result.status === 'browser') {
+      showToast(REMINDER_TEST_SCHEDULED_TOAST(timeLabelOf(new Date(Date.now() + 120_000))), {
+        kind: 'info',
+        durationMs: 5000,
+      });
+    } else {
+      showToast(REMINDER_TEST_FAILED_TOAST, { kind: 'info', durationMs: 7000 });
+    }
   };
 
   return (
@@ -450,6 +486,13 @@ export const NotificationBellPanel: React.FC<NotificationBellPanelProps> = ({
                         ? REMINDER_STATUS_ARMED(describeWhen(armed.nextAt))
                         : REMINDER_STATUS_NONE}
                     </p>
+                    {/* دور دهم — otherwise «فردا ساعت …» looks like a bug rather
+                        than the rule the user asked for. */}
+                    {todayHasAnyDhikr && armed.nextAt && (
+                      <p className="text-[10px] text-[var(--muted)]/90 leading-relaxed">
+                        {REMINDER_STATUS_TODAY_SKIPPED}
+                      </p>
+                    )}
                     {armed.exactAllowed === false && (
                       <>
                         <p className="text-[10px] text-[var(--muted)]/90 leading-relaxed">
@@ -464,6 +507,32 @@ export const NotificationBellPanel: React.FC<NotificationBellPanelProps> = ({
                           {REMINDER_STATUS_EXACT_BUTTON}
                         </button>
                       </>
+                    )}
+                  </div>
+                )}
+
+                {/* دور دهم — proof, not a promise: when reminders really fired. */}
+                {armed?.supported && (
+                  <div
+                    data-testid="reminder-delivery-log"
+                    className="bg-[var(--bg)] border border-[var(--border)] rounded-2xl p-3 space-y-1"
+                  >
+                    <div className="text-[11px] font-bold text-[var(--text)]">
+                      {REMINDER_LOG_TITLE}
+                    </div>
+                    {delivered.length === 0 ? (
+                      <p className="text-[10px] text-[var(--muted)] leading-relaxed">
+                        {REMINDER_LOG_EMPTY}
+                      </p>
+                    ) : (
+                      delivered.slice(0, 3).map((d) => (
+                        <p
+                          key={`${d.id}-${d.at}`}
+                          className="text-[10px] text-[var(--muted)] leading-relaxed tabular-nums-fa"
+                        >
+                          ✅ {describeWhen(new Date(d.at))}
+                        </p>
+                      ))
                     )}
                   </div>
                 )}
@@ -490,6 +559,15 @@ export const NotificationBellPanel: React.FC<NotificationBellPanelProps> = ({
                   >
                     <Send className="w-3.5 h-3.5 text-[var(--accent)]" />
                     ارسال پیام آزمایشی
+                  </button>
+                  <button
+                    type="button"
+                    data-testid="reminder-test-schedule-button"
+                    onClick={handleScheduleTest}
+                    className="flex items-center justify-center gap-2 py-2.5 rounded-2xl bg-[var(--bg)] border border-[var(--accent)]/40 text-[var(--text)] text-xs font-bold transition-all"
+                  >
+                    <Clock className="w-3.5 h-3.5 text-[var(--accent)]" />
+                    {REMINDER_TEST_SCHEDULE_BUTTON}
                   </button>
                   <button
                     type="button"

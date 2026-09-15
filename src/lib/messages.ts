@@ -64,6 +64,9 @@ export const REMINDER_BACKGROUND_GUIDE = [
 export const REMINDER_STATUS_TITLE = 'وضعیت یادآوری روی گوشی';
 export const REMINDER_STATUS_ARMED = (whenLabel: string) =>
   `یادآوری روی گوشیت ثبت شده ✅ اولین یادآوری: ${whenLabel}`;
+/** دور دهم — why today's reminder is missing when the user already said a dhikr. */
+export const REMINDER_STATUS_TODAY_SKIPPED =
+  '(امروز چون ذکر گفتی، یادآوری امروز فرستاده نمی‌شود.)';
 export const REMINDER_STATUS_NONE =
   'الان هیچ یادآوری‌ای روی گوشیت ثبت نیست. دکمه‌ی «ثبت یادآوری» رو بزن.';
 export const REMINDER_STATUS_INEXACT =
@@ -73,6 +76,25 @@ export const REMINDER_STATUS_EXACT_BUTTON = 'روشن کردن هشدار دقی
 /** دور نهم / مورد ۴ — «ثبت یادآوری» when the phone did not actually take it. */
 export const REMINDER_SAVE_FAILED_TOAST =
   'یادآوری روی گوشیت ثبت نشد. لطفاً اعلان‌های برنامه رو از تنظیمات گوشی روشن کن و دوباره امتحان کن.';
+
+/**
+ * دور دهم — the scheduled test.
+ *
+ * «ارسال پیام آزمایشی» shows its notification immediately and never goes
+ * through the phone's scheduler, so it always worked and proved nothing. This
+ * one is a real alarm a couple of minutes out: close the app, wait, and the
+ * answer is unambiguous.
+ */
+export const REMINDER_TEST_SCHEDULE_BUTTON = 'یادآوری آزمایشی برای ۲ دقیقه بعد';
+export const REMINDER_TEST_SCHEDULED_TOAST = (timeLabel: string) =>
+  `یادآوری آزمایشی برای ساعت ${timeLabel} ثبت شد ⏰ برنامه رو ببند و صبر کن.`;
+export const REMINDER_TEST_FAILED_TOAST =
+  'یادآوری آزمایشی ثبت نشد. لطفاً اعلان‌های برنامه رو از تنظیمات گوشی روشن کن.';
+
+/** دور دهم — the delivery log: «نیامد» and «آمد و ندیدمش» are not the same thing. */
+export const REMINDER_LOG_TITLE = 'یادآوری‌هایی که تا حالا رسیده‌اند';
+export const REMINDER_LOG_EMPTY =
+  'هنوز هیچ یادآوری‌ای اجرا نشده. بعد از اولین یادآوری، ساعتش این‌جا ثبت می‌شود.';
 
 /** NEW TEXT (needs the user's confirmation) — shown when notification permission was refused. */
 export const REMINDER_PERMISSION_DENIED_MESSAGE =
