@@ -48,7 +48,16 @@ jobs:
 
       # Brings the Android SDK onto the runner (the one piece the sandbox
       # this project is developed in cannot download).
+      #
+      # `packages` is set because the action's own default list still asks for
+      # the legacy `tools` package, which current cmdline-tools no longer ship:
+      # sdkmanager exits 1 with «Failed to find package 'tools'» and the run
+      # dies before it reaches any of this project's code. Nothing here needs
+      # `tools` — the Android Gradle plugin fetches the platform and
+      # build-tools it wants by itself.
       - uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools'
 
       - name: Install dependencies
         run: npm ci
