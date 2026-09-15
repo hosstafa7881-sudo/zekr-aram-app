@@ -45,7 +45,7 @@
 
 | # | مورد | وضعیت |
 |---|---|---|
-| ۱۵ | `scripts/qa-devices.mjs` — همه‌ی صفحه‌ها در ۱۰ اندازه، روز و شب، بدون سرریز | ⬜ |
+| ۱۵ | `scripts/qa-devices.mjs` — همه‌ی صفحه‌ها در ۱۰ اندازه، روز و شب، بدون سرریز | ✅ |
 
 ## ج) کارهای پایانی
 
@@ -53,8 +53,8 @@
 |---|---|---|
 | د۱ | `build` و `type-check` تمیز | ⬜ |
 | د۲ | کل مجموعه‌ی آزمون‌ها سبز + `qa-v10` تازه | ⬜ |
-| د۳ | نسخه ۱۰ (`APP_VERSION` + `version.json` + versionCode 4 + versionName 1.3.0) | ⬜ |
-| د۴ | به‌روزرسانی `SKILL.md` و `MESSAGES-INVENTORY.md` | ⬜ |
+| د۳ | نسخه ۱۰ (`APP_VERSION` + `version.json` + versionCode 4 + versionName 1.3.0) | ✅ |
+| د۴ | به‌روزرسانی `SKILL.md` و `MESSAGES-INVENTORY.md` | ✅ |
 | د۵ | نشان‌دادن تصویرهای واقعی به کاربر قبل از پایان | ⬜ |
 | د۶ | APK دیباگ + گزارش تفکیکی + چک‌لیست تست دستی | ⬜ |
 

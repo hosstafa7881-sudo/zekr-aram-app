@@ -23,8 +23,10 @@
     "qa:v9-calendar": "node scripts/qa-v9-calendar.mjs",
     "qa:v9": "node scripts/qa-v9.mjs",
     "qa:v10-clock": "node scripts/qa-v10-clock.mjs",
+    "qa:v10": "node scripts/qa-v10.mjs",
+    "qa:devices": "node scripts/qa-devices.mjs",
     "qa:v8": "node scripts/qa-v8.mjs",
-    "qa": "npm run build && npm run qa:layout && npm run qa:flows && npm run qa:flows2 && npm run qa:occasions && npm run qa:misc && npm run qa:v7 && npm run qa:v8 && npm run qa:occasion-dates && npm run qa:v9-calendar && npm run qa:v9 && npm run qa:v10-clock"
+    "qa": "npm run build && npm run qa:layout && npm run qa:flows && npm run qa:flows2 && npm run qa:occasions && npm run qa:misc && npm run qa:v7 && npm run qa:v8 && npm run qa:occasion-dates && npm run qa:v9-calendar && npm run qa:v9 && npm run qa:v10-clock && npm run qa:v10"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.2",
