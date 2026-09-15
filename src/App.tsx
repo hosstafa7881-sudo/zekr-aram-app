@@ -26,11 +26,15 @@ import { useGamificationEvents } from './lib/useGamificationEvents';
 import { useOccasionNotice } from './lib/useOccasionNotice';
 import { useDailyReminder } from './lib/useDailyReminder';
 import { useAppUpdate } from './lib/useAppUpdate';
+import { clearAllUserData } from './lib/dataReset';
+import { FEATURES } from './config/features';
+import { clearGamificationState } from './lib/gamification';
 import { CelebrationModal } from './features/gamification/CelebrationModal';
 import { MedalEarnedModal } from './features/gamification/MedalEarnedModal';
 import {
   NotebookItemDef,
   NotebookDayEntry,
+  DEFAULT_NOTEBOOK_ITEMS,
 } from './features/notebook/notebookTypes';
 import {
   loadNotebookItems,
@@ -54,6 +58,7 @@ import { setFreeExtensionUntil } from './lib/subscription';
 import { CountDiscountModal } from './features/discounts/CountDiscountModal';
 import { ReferralDiscountModal } from './features/discounts/ReferralDiscountModal';
 import { DiscountEarnedModal } from './features/discounts/DiscountEarnedModal';
+import { DayDeleteScope } from './features/history/DayDeleteDialog';
 
 export function App() {
   // مورد ۲ب — self-updating build check (see useAppUpdate.ts).
@@ -185,12 +190,15 @@ export function App() {
             activeDhikr.id,
             activeDhikr.title,
             delta,
-            prevLogs
+            prevLogs,
+            // مورد ۱۱ — stored alongside the count so the record names its own
+            // dhikr, instead of history having to guess from the id later.
+            activeDhikr.arabicText
           )
         );
       }
     },
-    [activeDhikr.id, activeDhikr.title]
+    [activeDhikr.id, activeDhikr.title, activeDhikr.arabicText]
   );
 
   // Handle Reset of current dhikr count
@@ -268,9 +276,18 @@ export function App() {
     [activeDhikrId]
   );
 
-  // Delete a single day's history entry
-  const handleDeleteDailyLog = useCallback((dateKey: string) => {
-    setDailyLogs((prev) => deleteDailyLog(dateKey, prev));
+  // Delete a single day's history entry.
+  //
+  // دور نهم / مورد ۶ب — this used to remove the day's ذکرها and nothing else,
+  // so the notebook the user had filled in that day could never be deleted at
+  // all. The card now asks which, and this honours the answer.
+  const handleDeleteDailyLog = useCallback((dateKey: string, scope: DayDeleteScope = 'dhikr') => {
+    if (scope === 'dhikr' || scope === 'both') {
+      setDailyLogs((prev) => deleteDailyLog(dateKey, prev));
+    }
+    if (scope === 'notebook' || scope === 'both') {
+      setNotebookEntries((prev) => prev.filter((e) => e.dateKey !== dateKey));
+    }
   }, []);
 
   // Restore full backup JSON
@@ -301,11 +318,30 @@ export function App() {
 
   // Hard reset all data
   const handleHardResetAllData = useCallback(() => {
+    // دور دهم — ERASE FIRST, then write the defaults back.
+    //
+    // Order matters here and got it wrong once already: writing the defaults
+    // and then clearing the keys leaves the notebook's checklist absent instead
+    // of reset. src/lib/dataReset.ts decides for EVERY stored key — including
+    // the three that deliberately survive, so the reset cannot become a way to
+    // restart the trial or re-earn the ۱۰۰٪ code — and the defaults are laid
+    // down afterwards.
+    clearAllUserData();
+    clearGamificationState();
+
     setDhikrs(INITIAL_DHIKR_LIST);
     setActiveDhikrId(INITIAL_DHIKR_LIST[0].id);
     setDailyLogs([]);
     setSettings(DEFAULT_SETTINGS);
     saveDailyLogs([]);
+    // دور نهم / مورد ۶د — «پاک کردن کامل داده‌ها» left the notebook untouched:
+    // every day the user had ever filled in, and every checklist item they had
+    // added, survived a reset that promised to erase everything. Both go now,
+    // and the checklist returns to its defaults exactly like the dhikr list.
+    setNotebookItems(DEFAULT_NOTEBOOK_ITEMS);
+    saveNotebookItems(DEFAULT_NOTEBOOK_ITEMS);
+    setNotebookEntries([]);
+    saveNotebookEntries([]);
     setActiveTab('home');
   }, []);
 
@@ -447,7 +483,7 @@ interface MainShellProps {
   onEditDhikr: (updated: DhikrItem) => void;
   onDeleteDhikr: (id: string) => void;
   onRestoreBackup: (payload: BackupPayload) => void;
-  onDeleteDailyLog: (dateKey: string) => void;
+  onDeleteDailyLog: (dateKey: string, scope: DayDeleteScope) => void;
   onUpdateSettings: (settings: UserSettings) => void;
   onHardResetAllData: () => void;
   onAddNotebookItem: (text: string) => void;
@@ -672,8 +708,10 @@ function MainShell(props: MainShellProps) {
         onGoToPaywall={goToPaywallFromDiscount}
       />
 
+      {/* دور دهم — gated at the render too, not only at the button, so the
+          feature cannot be reached by any other route while it is off. */}
       <ReferralDiscountModal
-        isOpen={isReferralModalOpen}
+        isOpen={FEATURES.referralDiscount && isReferralModalOpen}
         onClose={() => setIsReferralModalOpen(false)}
         eligible={referralDiscount.eligible}
         activatedAt={referralDiscount.activatedAt}

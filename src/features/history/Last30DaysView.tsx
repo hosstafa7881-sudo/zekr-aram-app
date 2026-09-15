@@ -5,6 +5,7 @@ import { getShamsiDateInfo, toPersianDigits } from '../../utils/persian';
 import { RollingDay } from '../../utils/jalali';
 import { DayDetailCard } from './DayDetailCard';
 import { X, ChevronRight } from 'lucide-react';
+import { DayDeleteScope } from './DayDeleteDialog';
 
 /** "۱۹ شهریور ۱۴۰۵" — day + month + year, no weekday name (per بخش ت #12د's example). */
 function formatFullShamsiDate(date: Date): string {
@@ -19,7 +20,7 @@ interface Last30DaysViewProps {
   dailyLogs: DailyLog[];
   notebookItems: NotebookItemDef[];
   notebookEntries: NotebookDayEntry[];
-  onDeleteDay: (dateKey: string) => void;
+  onDeleteDay: (dateKey: string, scope: DayDeleteScope) => void;
 }
 
 /** Rolling last-30-days breakdown (بخش ت #12) — not a calendar month. Days

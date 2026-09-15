@@ -8,6 +8,8 @@ import {
   computeBestPreviousDayTotal,
   loadGamificationState,
   saveGamificationState,
+  DEFAULT_GAMIFICATION_STATE,
+  GAMIFICATION_RESET_EVENT,
   BADGE_LEVELS,
   BadgeLevel,
   CURRENT_BADGE_THRESHOLD_VERSION,
@@ -42,6 +44,17 @@ export function useGamificationEvents(dailyLogs: DailyLog[], todayDateKey: strin
   const [medalEarned, setMedalEarned] = useState<BadgeLevel | null>(null);
   const [starEarnedToast, setStarEarnedToast] = useState<string | null>(null);
   const stateRef = useRef(loadGamificationState());
+
+  // دور دهم — a full data wipe clears the stored state, but this ref was read
+  // once at mount and would keep the old milestone counts alive until a reload.
+  // Clearing localStorage alone was not enough.
+  useEffect(() => {
+    const onWipe = () => {
+      stateRef.current = { ...DEFAULT_GAMIFICATION_STATE };
+    };
+    window.addEventListener(GAMIFICATION_RESET_EVENT, onWipe);
+    return () => window.removeEventListener(GAMIFICATION_RESET_EVENT, onWipe);
+  }, []);
 
   useEffect(() => {
     const state = stateRef.current;

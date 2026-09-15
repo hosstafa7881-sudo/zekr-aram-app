@@ -9,6 +9,9 @@
     "preview": "vite preview",
     "type-check": "tsc --noEmit",
     "build:story-collage": "node scripts/build-story-collage.mjs",
+    "icons:android": "node scripts/build-app-icons.mjs && capacitor-assets generate --android && node scripts/fix-adaptive-icon-xml.mjs",
+    "android:sync": "npm run build && cap sync android",
+    "preview:icons": "node scripts/preview-icon-masks.mjs",
     "qa:layout": "node scripts/qa-layout.mjs",
     "qa:flows": "node scripts/qa-flows.mjs",
     "qa:flows2": "node scripts/qa-flows2.mjs",
@@ -16,9 +19,22 @@
     "qa:misc": "node scripts/qa-misc.mjs",
     "qa:storelinks": "node scripts/qa-storelinks.mjs",
     "qa:v7": "node scripts/qa-v7.mjs",
-    "qa": "npm run build && npm run qa:layout && npm run qa:flows && npm run qa:flows2 && npm run qa:occasions && npm run qa:misc && npm run qa:v7"
+    "qa:occasion-dates": "node scripts/qa-occasion-dates.mjs",
+    "qa:v9-calendar": "node scripts/qa-v9-calendar.mjs",
+    "qa:v9": "node scripts/qa-v9.mjs",
+    "qa:v10-clock": "node scripts/qa-v10-clock.mjs",
+    "qa:v10": "node scripts/qa-v10.mjs",
+    "qa:devices": "node scripts/qa-devices.mjs",
+    "qa:v8": "node scripts/qa-v8.mjs",
+    "qa": "npm run build && npm run qa:layout && npm run qa:flows && npm run qa:flows2 && npm run qa:occasions && npm run qa:misc && npm run qa:v7 && npm run qa:v8 && npm run qa:occasion-dates && npm run qa:v9-calendar && npm run qa:v9 && npm run qa:v10-clock && npm run qa:v10"
   },
   "dependencies": {
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/core": "^8.5.2",
+    "@capacitor/filesystem": "^8.1.3",
+    "@capacitor/haptics": "^8.0.2",
+    "@capacitor/local-notifications": "^8.3.1",
+    "@capacitor/share": "^8.0.1",
     "clsx": "2.1.1",
     "lucide-react": "^1.41.0",
     "qrcode-generator": "^2.0.4",
@@ -27,6 +43,8 @@
     "tailwind-merge": "3.4.0"
   },
   "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^8.5.2",
     "@tailwindcss/vite": "4.1.17",
     "@types/node": "22.19.17",
     "@types/react": "19.2.7",

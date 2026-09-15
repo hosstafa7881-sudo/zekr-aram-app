@@ -15,6 +15,8 @@
 // ReferralDiscountModal (تصویر آماده‌ی استوری، مورد ۱۹).
 
 import { getAvailableStoreLinks } from '../config/storeLinks';
+import { blobToBase64, isNativePlatform } from './native';
+import { downloadInBrowser } from './saveFile';
 
 /** True when at least one store link has been filled in. */
 export function hasStoreLinks(): boolean {
@@ -31,9 +33,14 @@ export function hasStoreLinks(): boolean {
  * Returns '' while no store link is configured (nothing is shown at all).
  */
 export function buildStoreLinksBlock(): string {
+  // دور دهم — هر فروشگاه دو خط: نامش، و آدرسش روی خط خودش.
+  //
+  // «📥 کافه‌بازار: https://…» روی یک خط، در تلگرام و اینستاگرام وسط آدرس
+  // می‌شکند و به‌هم‌ریخته دیده می‌شود. آدرس روی خط خودش هم مرتب‌تر است هم
+  // راحت‌تر لمس می‌شود. بلوک هر فروشگاه با یک خط خالی از بعدی جدا می‌شود.
   return getAvailableStoreLinks()
-    .map((s) => `📥 ${s.label}: ${s.url}`)
-    .join('\n');
+    .map((s) => `📥 ${s.label}:\n${s.url}`)
+    .join('\n\n');
 }
 
 /** "دانلود از کافه‌بازار و مایکت" — store NAMES only, for generated images. Returns '' when no store has a link. */
@@ -55,8 +62,11 @@ export function buildInviteLine(): string {
 
 /** Appends the store-links block to a text, when there is one. */
 export function appendStoreLinks(text: string): string {
+  // دور دهم — یک خط خالی، نه یک خط. متن و لینک‌ها دو چیزند و چسبیدنشان به هم
+  // کل کپشن را بی‌نظم نشان می‌داد. همه‌ی متن‌های اشتراک‌گذاری از همین‌جا رد
+  // می‌شوند، پس این یک تغییر همه‌جا را مرتب می‌کند.
   const block = buildStoreLinksBlock();
-  return block ? `${text}\n${block}` : text;
+  return block ? `${text}\n\n${block}` : text;
 }
 
 export interface ShareResultHandlers {
@@ -65,8 +75,21 @@ export interface ShareResultHandlers {
   /** Called when an image had to be downloaded instead of shared. */
   onDownloadedInstead?: () => void;
   /**
+   * دور دهم — called the moment the caption is safely on the clipboard, BEFORE
+   * the OS share sheet opens.
+   *
+   * This is the whole point: on Android `Share.share()` does not resolve until
+   * the user comes back from the app they shared into, so anything announced
+   * after it is announced to an empty room. The user put a story on Instagram,
+   * came back minutes later, and only then read «متن هم کپی شد» — exactly when
+   * it was no longer any use. The clipboard write already happens first, so
+   * there is nothing to wait for.
+   */
+  onCaptionCopied?: () => void;
+  /**
    * Called after an image was handed to the OS share sheet, telling the caller
-   * whether the caption also made it into the clipboard as a safety net.
+   * whether the caption also had to ride the clipboard as a safety net.
+   * Browser path only — on native, `onCaptionCopied` fires up front instead.
    */
   onImageShared?: (captionCopied: boolean) => void;
   /** Called when neither sharing nor the fallback worked. */
@@ -105,24 +128,52 @@ export async function copyTextToClipboard(text: string): Promise<boolean> {
   }
 }
 
+/** True when the user deliberately closed the OS share sheet. Never an error. */
+function isUserCancellation(err: unknown): boolean {
+  if ((err as DOMException)?.name === 'AbortError') return true;
+  const message = String((err as Error)?.message || '').toLowerCase();
+  // The Capacitor Share plugin reports a dismissed sheet as a rejection with
+  // these wordings rather than as an AbortError.
+  return message.includes('canceled') || message.includes('cancelled') || message.includes('abort');
+}
+
 /**
- * Shares plain text through the Web Share API, appending the store links.
- * Clipboard copy is only a fallback for browsers without navigator.share.
+ * دور هشتم / مورد ۱ — shares plain text.
+ *
+ * Inside the Android app this now opens the real OS share sheet through
+ * @capacitor/share. Before this round it went straight to `navigator.share`,
+ * which the Android WebView does not implement, so every share button in the
+ * app fell through to the clipboard and told the user «در حافظه موقت ذخیره
+ * شد» — the bug this round exists to fix.
+ *
+ * The clipboard is a fallback ONLY, and only ever reported as what it is.
  */
 export async function shareAppText(
   text: string,
   handlers: ShareResultHandlers = {}
 ): Promise<void> {
   const fullText = appendStoreLinks(text);
-  try {
-    if (navigator.share) {
-      await navigator.share({ text: fullText, title: SHARE_TITLE });
+
+  if (isNativePlatform()) {
+    try {
+      const { Share } = await import('@capacitor/share');
+      await Share.share({ title: SHARE_TITLE, text: fullText, dialogTitle: SHARE_TITLE });
       return;
+    } catch (err) {
+      if (isUserCancellation(err)) return;
+      // A real failure — fall through to the clipboard and SAY so.
     }
-  } catch {
-    // User cancelled or the share sheet failed — fall through to clipboard.
-    return;
+  } else {
+    try {
+      if (navigator.share) {
+        await navigator.share({ text: fullText, title: SHARE_TITLE });
+        return;
+      }
+    } catch (err) {
+      if (isUserCancellation(err)) return;
+    }
   }
+
   if (await copyTextToClipboard(fullText)) {
     handlers.onCopiedToClipboard?.();
   } else {
@@ -130,43 +181,13 @@ export async function shareAppText(
   }
 }
 
-/** Triggers a plain browser download of a generated image file. */
-export function downloadImageFile(blob: Blob, fileName: string) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = fileName;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  // Give the browser a tick to start the download before revoking.
-  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
 /**
- * دور هفتم / مورد ۱ — the caption MUST always travel with the image, because
- * the writing burnt into the picture isn't clickable and the store links only
- * work as real text.
- *
- * Two things could silently swallow it before:
- *
- *  1. `navigator.canShare` was asked about `{ files }` only, while `share()`
- *     was then called with `{ files, text, title }` — an unvalidated payload.
- *     A browser that accepts files but not files+text rejects that call, and
- *     the old `catch` treated the rejection as "user cancelled" and gave up,
- *     so neither the image nor the caption went anywhere.
- *  2. On any browser without file sharing the image was simply downloaded and
- *     the caption was dropped on the floor with nothing left to paste.
- *
- * So now: validate the exact payload, step down one field at a time
- * (files+text+title → files+text → files), and always keep the caption in the
- * clipboard so it can be pasted next to the picture whichever app receives it
- * — several Android share targets accept an image but ignore the text that
- * comes with it, and that is invisible to the page.
+ * Re-exported so the one browser-download implementation lives in saveFile.ts
+ * alongside the native one it is the fallback for.
  */
+export { downloadInBrowser as downloadImageFile } from './saveFile';
+
 function canSharePayload(data: ShareData): boolean {
-  // No canShare at all (older browsers): trust share() with files only when it
-  // exists, and let the try/catch below sort out the rest.
   if (typeof navigator.canShare !== 'function') return true;
   try {
     return navigator.canShare(data);
@@ -176,9 +197,16 @@ function canSharePayload(data: ShareData): boolean {
 }
 
 /**
- * Shares a generated image (with the text as its caption) through the
- * standard Web Share API `files` flow, after checking navigator.canShare.
- * Falls back to downloading the file when file sharing isn't available.
+ * دور هشتم / مورد ۱ — shares a generated image WITH its caption.
+ *
+ * Native: the PNG is written into the app's cache directory and its real file
+ * URI handed to the OS share sheet, so an actual picture travels — not just
+ * text. Web: the Web Share level-2 `files` flow, stepping down one field at a
+ * time, exactly as دور هفتم left it.
+ *
+ * The caption is also kept in the clipboard in both cases, because a number of
+ * Android share targets accept a picture and drop the text that comes with it,
+ * and the page cannot tell when that happens (دور هفتم / مورد ۱).
  */
 export async function shareAppImage(
   blob: Blob,
@@ -188,9 +216,42 @@ export async function shareAppImage(
 ): Promise<void> {
   const fullText = appendStoreLinks(caption);
 
-  // Started (not awaited) before share() so the click's user activation is
-  // still alive for BOTH calls; the result is read once sharing is over.
+  // Started (not awaited) before the share so the click's user activation is
+  // still alive for both calls; the result is read once sharing is over.
   const clipboardPromise = copyTextToClipboard(fullText);
+
+  if (isNativePlatform()) {
+    try {
+      const [{ Share }, { Filesystem, Directory }] = await Promise.all([
+        import('@capacitor/share'),
+        import('@capacitor/filesystem'),
+      ]);
+      const data = await blobToBase64(blob);
+      // Cache, not Documents: this copy exists only to hand the OS a file URI.
+      // «ذخیره در گالری» is a separate, deliberate action (مورد ۴).
+      const written = await Filesystem.writeFile({
+        path: fileName,
+        data,
+        directory: Directory.Cache,
+      });
+      // دور دهم — tell the user the caption is on the clipboard NOW, while they
+      // are still looking at the app. Awaiting the clipboard here is safe on
+      // native: the share sheet is opened by the OS, not by a click's user
+      // activation, so nothing is lost by resolving one promise first.
+      if (await clipboardPromise) handlers.onCaptionCopied?.();
+      await Share.share({
+        title: SHARE_TITLE,
+        text: fullText,
+        url: written.uri,
+        dialogTitle: SHARE_TITLE,
+      });
+      return;
+    } catch (err) {
+      if (isUserCancellation(err)) return;
+      handlers.onFailed?.();
+      return;
+    }
+  }
 
   let file: File | null = null;
   try {
@@ -200,8 +261,6 @@ export async function shareAppImage(
   }
 
   if (file && typeof navigator.share === 'function') {
-    // Richest payload first; each step down only drops a field, never the
-    // caption's own delivery (the clipboard copy above backs that up).
     const attempts: ShareData[] = [
       { files: [file], text: fullText, title: SHARE_TITLE },
       { files: [file], text: fullText },
@@ -214,19 +273,82 @@ export async function shareAppImage(
         handlers.onImageShared?.(await clipboardPromise);
         return;
       } catch (err) {
-        // AbortError = the user closed the share sheet on purpose. Anything
-        // else means this payload shape was refused, so try a simpler one.
-        if ((err as DOMException)?.name === 'AbortError') return;
+        if (isUserCancellation(err)) return;
       }
     }
   }
 
   try {
-    downloadImageFile(blob, fileName);
+    downloadInBrowser(blob, fileName);
   } catch {
     handlers.onFailed?.();
     return;
   }
   await clipboardPromise;
   handlers.onDownloadedInstead?.();
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// دور نهم — a second way out for the backup file.
+//
+// Saving into the phone's Downloads folder is the primary route, but it runs
+// through the OEM's media provider, and some of them refuse. The backup is the
+// only thing protecting years of the user's history, so it may not depend on a
+// single door: this hands the file straight to the share sheet, where the user
+// can put it in Telegram, Drive, email, or their own files app.
+//
+// Like everything else since the golden rule, it returns what actually
+// happened. 'cancelled' is not a failure and must not be reported as one.
+// ──────────────────────────────────────────────────────────────────────────
+
+export type ShareFileResult = 'shared' | 'cancelled' | 'unavailable' | 'failed';
+
+export async function shareFile(
+  blob: Blob,
+  fileName: string,
+  mimeType: string,
+  caption: string
+): Promise<ShareFileResult> {
+  if (isNativePlatform()) {
+    try {
+      const [{ Share }, { Filesystem, Directory }] = await Promise.all([
+        import('@capacitor/share'),
+        import('@capacitor/filesystem'),
+      ]);
+      const data = await blobToBase64(blob);
+      const written = await Filesystem.writeFile({
+        path: fileName,
+        data,
+        directory: Directory.Cache,
+      });
+      await Share.share({
+        title: SHARE_TITLE,
+        text: caption,
+        url: written.uri,
+        dialogTitle: SHARE_TITLE,
+      });
+      return 'shared';
+    } catch (err) {
+      if (isUserCancellation(err)) return 'cancelled';
+      return 'failed';
+    }
+  }
+
+  let file: File | null = null;
+  try {
+    file = new File([blob], fileName, { type: mimeType });
+  } catch {
+    file = null;
+  }
+  if (!file || typeof navigator.share !== 'function') return 'unavailable';
+
+  const payload: ShareData = { files: [file], title: SHARE_TITLE, text: caption };
+  if (!canSharePayload(payload)) return 'unavailable';
+  try {
+    await navigator.share(payload);
+    return 'shared';
+  } catch (err) {
+    if (isUserCancellation(err)) return 'cancelled';
+    return 'failed';
+  }
 }

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The Capacitor template's stock theme colours, which styles.xml has
+         always referenced. -->
+    <color name="colorPrimary">#3880FF</color>
+    <color name="colorPrimaryDark">#3171E0</color>
+    <color name="colorAccent">#4C8DFF</color>
+
+    <!-- دور هشتم / مورد ۷ — the app's own first-paint colour (سبز ملایم،
+         پالت پیش‌فرض), the same value index.html and capacitor.config.ts use.
+         With the splash screen gone this is what fills the window for the
+         fraction of a second before the WebView paints, so there is no white
+         or black flash in its place. -->
+    <color name="appBackground">#F3F7EE</color>
+</resources>

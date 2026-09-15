@@ -131,10 +131,13 @@ async function run() {
         call ? `${call.files.length} فایل، کپشن ${call.text ? call.text.length : 0} کاراکتر` : 'هیچ فراخوانی ثبت نشد');
       check(`مورد۱ (${vp.name}) کپشن شامل ذکرهای امروز و مجموع است`,
         !!call?.text && call.text.includes('مجموع: ') && /:\s*[۰-۹]/.test(call.text));
-      check(`مورد۱ (${vp.name}) کپشن با نقطه تمام می‌شود (هیچ فروشگاهی لینک ندارد)`,
-        !!call?.text && call.text.trim().endsWith('امتحانش کنی.'));
-      check(`مورد۱ (${vp.name}) هیچ نام فروشگاهی بدون لینک در کپشن نیست`,
-        !!call?.text && !/کافه‌بازار|مایکت|گوگل‌پلی/.test(call.text));
+      // دور نهم — the کافه‌بازار and مایکت addresses are shipped now, so the
+      // caption carries them; گوگل‌پلی has none and must still stay out.
+      check(`مورد۱ (${vp.name}) بین متن و لینک‌ها یک خط خالی هست`,
+        !!call?.text && call.text.includes('امتحانش کنی:\n\n📥'),
+        call?.text ? call.text.trim().split('\n').slice(-2).join(' ⏎ ') : 'بدون کپشن');
+      check(`مورد۱ (${vp.name}) فروشگاه بدون لینک در کپشن نیست`,
+        !!call?.text && !call.text.includes('گوگل‌پلی') && !call.text.includes('مایکت'));
       // The new toast must sit fully inside the phone's screen (قانون بخش ۳).
       const toast = page.locator('.animate-fade-in', { hasText: 'کپی شد' }).first();
       await toast.waitFor({ state: 'visible', timeout: 5000 });

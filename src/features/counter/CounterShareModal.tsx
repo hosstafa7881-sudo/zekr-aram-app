@@ -58,6 +58,10 @@ export const CounterShareModal: React.FC<CounterShareModalProps> = ({
       // share.ts; the toast only tells the user about the clipboard copy that
       // backs it up, because some apps accept the picture and drop the text.
       await shareAppImage(blob, 'zekraram-counter.png', caption, {
+        // دور دهم — on the phone this fires before the share sheet opens, so
+        // the user reads it while still in ذکرآرام rather than minutes later.
+        onCaptionCopied: () =>
+          showToast(CAPTION_COPIED_MESSAGE, { kind: 'success', durationMs: 5000 }),
         onImageShared: (captionCopied) => {
           if (captionCopied) {
             showToast(CAPTION_COPIED_MESSAGE, { kind: 'success', durationMs: 5000 });

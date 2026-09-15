@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">ذکرآرام</string>
+    <string name="title_activity_main">ذکرآرام</string>
+    <string name="package_name">com.zekraram.app</string>
+    <string name="custom_url_scheme">com.zekraram.app</string>
+</resources>

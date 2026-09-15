@@ -1,14 +1,18 @@
-// Verifies everything that only becomes visible ONCE the store links are
-// filled in (مورد ۴ و مورد ۱۹): the links block at the end of shared texts,
-// the "دانلود از …" line on the generated counter image, the bottom box of the
-// story image, and — most importantly — that the QR code on it really decodes
-// back to the Cafe Bazaar URL.
+// Verifies everything that hangs off the store links (مورد ۴ و مورد ۱۹): the
+// links block at the end of shared texts, the "دانلود از …" line on the
+// generated counter image, the bottom box of the story image, and — most
+// importantly — that the QR code on it really decodes back to the Cafe Bazaar
+// URL.
 //
 //   node scripts/qa-storelinks.mjs
 //
-// It temporarily fills src/config/storeLinks.ts, rebuilds, runs the checks and
-// always restores the original file (which must stay empty until the app is
-// actually published).
+// دور نهم — this used to patch src/config/storeLinks.ts, run, and restore it,
+// because the links were deliberately empty and the story image's bottom box
+// was therefore absent. The user reported that absence as a fault, and since
+// both Iranian stores address an app purely by its (already fixed) package
+// name, the links are now real and permanent. So this script no longer patches
+// anything: it checks the shipped configuration, which is the only version
+// worth checking.
 
 import path from 'node:path';
 import fs from 'node:fs';
@@ -36,12 +40,11 @@ function check(name, ok, detail = '') {
 }
 
 async function run() {
-  const original = fs.readFileSync(LINKS_FILE, 'utf8');
-  const patched = original
-    .replace("{ id: 'cafebazaar', label: 'کافه‌بازار', url: '' }", `{ id: 'cafebazaar', label: 'کافه‌بازار', url: '${BAZAAR_URL}' }`)
-    .replace("{ id: 'myket', label: 'مایکت', url: '' }", `{ id: 'myket', label: 'مایکت', url: '${MYKET_URL}' }`);
-  if (patched === original) throw new Error('could not patch storeLinks.ts');
-  fs.writeFileSync(LINKS_FILE, patched);
+  const shipped = fs.readFileSync(LINKS_FILE, 'utf8');
+  // دور دهم — مایکت عمداً تا بعد از انتشار در کافه‌بازار خالی است.
+  if (!shipped.includes(BAZAAR_URL)) {
+    throw new Error('storeLinks.ts no longer carries the Cafe Bazaar address');
+  }
 
   let server;
   let browser;
@@ -73,11 +76,14 @@ async function run() {
     await page.waitForTimeout(400);
     const text = await page.evaluate(() => navigator.clipboard.readText());
     fs.writeFileSync(path.join(OUT, 'share-text-with-links.txt'), text);
-    check('مورد۴ قالب لینک‌ها در انتهای متن',
-      text.includes(`📥 کافه‌بازار: ${BAZAAR_URL}`) && text.includes(`📥 مایکت: ${MYKET_URL}`));
-    check('مورد۴ فروشگاه بدون لینک (گوگل‌پلی) در متن نمی‌آید', !text.includes('گوگل‌پلی'));
-    check('مورد۶ با وجود لینک، جمله‌ی دعوت با دونقطه تمام می‌شود',
-      text.includes('تو هم می‌تونی امتحانش کنی:\n📥'));
+    // دور دهم — آدرس روی خط خودش، و یک خط خالی قبل از بلوک لینک‌ها.
+    check('مورد۴ نام فروشگاه و آدرسش روی دو خط جدا',
+      text.includes(`📥 کافه‌بازار:\n${BAZAAR_URL}`),
+      text.trim().split('\n').slice(-2).join(' ⏎ '));
+    check('مورد۴ فروشگاه بدون لینک در متن نمی‌آید',
+      !text.includes('گوگل‌پلی') && !text.includes('مایکت'));
+    check('مورد۶ بین جمله‌ی دعوت و لینک‌ها یک خط خالی هست',
+      text.includes('تو هم می‌تونی امتحانش کنی:\n\n📥'));
 
     // مورد ۶ — the generated counter image gains its "دانلود از …" line.
     await page.getByTestId('counter-share-icon').click();
@@ -101,8 +107,9 @@ async function run() {
     // Scan at x=120: inside the box but well clear of its centred text, so a
     // glyph never breaks the white run being measured.
     const promoHeight = await whiteBoxHeight(context, counterFile, 120, 40);
-    check('مورد۴الف کادر سفید تصویر شمارش سه‌خطی است (۲۸۰ پیکسل، نه ۲۱۰)',
-      Math.abs(promoHeight - 280) <= 6, `height=${promoHeight}px`);
+    // دور دهم — خط «دانلود از …» فاصله‌ی یک‌خطی گرفت، پس کادر ۳۱۰ شد نه ۲۸۰.
+    check('مورد۴الف کادر سفید تصویر شمارش سه‌خطی و جادار است (۳۱۰ پیکسل)',
+      Math.abs(promoHeight - 310) <= 8, `height=${promoHeight}px`);
     await cropTo(context, counterFile, path.join(OUT, 'v6-counter-promo-box.png'), {
       x: 40,
       y: counterSize.height - 350,
@@ -172,8 +179,6 @@ async function run() {
   } finally {
     if (browser) await browser.close();
     if (server) server.close();
-    fs.writeFileSync(LINKS_FILE, original);
-    execSync('npm run build', { cwd: ROOT, stdio: 'ignore' });
   }
 
   const failed = results.filter((r) => !r.ok);

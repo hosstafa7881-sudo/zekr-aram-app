@@ -2,12 +2,12 @@ import React, { useState } from 'react';
 import { DailyLog } from '../../lib/db';
 import { NotebookItemDef, NotebookDayEntry } from '../notebook/notebookTypes';
 import { toPersianDigits } from '../../utils/persian';
-import { ConfirmDialog } from '../../components/ConfirmDialog';
-import { DELETE_DAY_HISTORY_CONFIRM_MESSAGE } from '../../lib/messages';
+import { DayDeleteDialog, DayDeleteScope } from './DayDeleteDialog';
 import { DayShareModal } from './DayShareModal';
 import { useDayShare } from './useDayShare';
 import { NO_DHIKR_ON_DAY_TEXT, dayHasDhikr, dayHasNotebook } from '../../lib/dayShareText';
 import { Share2, Trash2, CheckCircle2, XCircle } from 'lucide-react';
+import { resolveDhikrDisplayTitle } from '../../lib/dhikrDisplayName';
 
 interface DayDetailCardProps {
   dateKey: string;
@@ -17,7 +17,8 @@ interface DayDetailCardProps {
   notebookItems: NotebookItemDef[];
   /** مورد ۱ — the full history, so the shared text can carry the lifetime «⭐ ستاره | مدال» line. */
   allDailyLogs: DailyLog[];
-  onDeleteDay: (dateKey: string) => void;
+  /** دور نهم / مورد ۶ — the user picks what to remove: ذکرها، دفترچه، or both. */
+  onDeleteDay: (dateKey: string, scope: DayDeleteScope) => void;
   /** Called after the day is deleted — e.g. to close a full-page view that no longer has anything to show. */
   onDeleted?: () => void;
 }
@@ -40,6 +41,13 @@ export const DayDetailCard: React.FC<DayDetailCardProps> = ({
 
   const checkedIds = notebookEntry?.checkedItemIds || [];
   const shareData = { shamsiDateLabel, log, notebookEntry, notebookItems, allDailyLogs };
+  const hasDhikr = dayHasDhikr(shareData);
+  // دور نهم / مورد ۶الف — a day the user wrote nothing in the notebook for must
+  // not have the notebook rendered at all. It used to draw the whole checklist
+  // with every item marked ❌, which reads as «you failed all ten of these
+  // today» when in truth the user simply never opened the notebook. The app
+  // already knows the difference — the same flag decides the share options.
+  const hasNotebook = dayHasNotebook(shareData);
   // 'full' — this card is used by both «۳۰ روز اخیر» and «جزئیات بیشتر», the two
   // places that share the COMPLETE notebook (مورد ۱۳).
   const dayShare = useDayShare(shareData, 'full');
@@ -49,8 +57,8 @@ export const DayDetailCard: React.FC<DayDetailCardProps> = ({
       data-testid="day-card"
       // Which kinds of content this day actually has — the same two flags that
       // decide its share options (مورد ۱۵).
-      data-has-dhikr={dayHasDhikr(shareData) ? 'yes' : 'no'}
-      data-has-notebook={dayHasNotebook(shareData) ? 'yes' : 'no'}
+      data-has-dhikr={hasDhikr ? 'yes' : 'no'}
+      data-has-notebook={hasNotebook ? 'yes' : 'no'}
       className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-3.5"
     >
       {/* Header row — مورد ۱۶: the date stays on the right, and the two action
@@ -87,14 +95,14 @@ export const DayDetailCard: React.FC<DayDetailCardProps> = ({
               key={id}
               className="inline-flex items-center gap-1 bg-[var(--bg)] text-[var(--muted)] text-[10px] px-2 py-0.5 rounded-lg border border-[var(--border)] tabular-nums-fa"
             >
-              <span>{item.title}:</span>
+              <span>{resolveDhikrDisplayTitle(id, item.title, item.arabicText)}:</span>
               <strong className="text-[var(--text)]">{toPersianDigits(item.count)}</strong>
             </span>
           ))}
         </div>
       )}
 
-      {dayHasDhikr(shareData) ? (
+      {hasDhikr ? (
         <div className="text-xs font-extrabold text-[var(--accent)] tabular-nums-fa mb-2.5">
           مجموع: {toPersianDigits(log?.totalCount || 0)} ذکر
         </div>
@@ -107,7 +115,8 @@ export const DayDetailCard: React.FC<DayDetailCardProps> = ({
         </div>
       )}
 
-      <div className="space-y-1 pt-2 border-t border-[var(--border)]">
+      {hasNotebook && (
+      <div data-testid="day-card-notebook" className="space-y-1 pt-2 border-t border-[var(--border)]">
         {notebookItems.map((item) => {
           const done = checkedIds.includes(item.id);
           const reason = notebookEntry?.reasons?.[item.id];
@@ -133,8 +142,9 @@ export const DayDetailCard: React.FC<DayDetailCardProps> = ({
           );
         })}
       </div>
+      )}
 
-      {notebookEntry?.feelingText && (
+      {hasNotebook && notebookEntry?.feelingText && (
         <p className="text-[11px] text-[var(--muted)] leading-relaxed pt-2 mt-2 border-t border-[var(--border)]">
           {notebookEntry.feelingText} {notebookEntry.stickers.join(' ')}
         </p>
@@ -148,13 +158,13 @@ export const DayDetailCard: React.FC<DayDetailCardProps> = ({
         options={dayShare.options}
       />
 
-      <ConfirmDialog
+      <DayDeleteDialog
         isOpen={deleteConfirmOpen}
-        title="حذف تاریخچهٔ روز"
-        message={DELETE_DAY_HISTORY_CONFIRM_MESSAGE}
+        hasDhikr={hasDhikr}
+        hasNotebook={hasNotebook}
         onCancel={() => setDeleteConfirmOpen(false)}
-        onConfirm={() => {
-          onDeleteDay(dateKey);
+        onConfirm={(scope) => {
+          onDeleteDay(dateKey, scope);
           setDeleteConfirmOpen(false);
           onDeleted?.();
         }}

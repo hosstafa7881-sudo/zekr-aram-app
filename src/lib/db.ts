@@ -1,11 +1,19 @@
 import { DhikrItem, INITIAL_DHIKR_LIST } from './seedData';
 import { getShamsiDateInfo } from '../utils/persian';
+import { arabicTextForRecord } from './dhikrDisplayName';
 
 export interface DailyLog {
   dateKey: string; // e.g. '2025-03-29'
   shamsiDate: string; // e.g. 'شنبه ۹ فروردین ۱۴۰۴'
   totalCount: number;
-  breakdown: Record<string, { title: string; count: number }>;
+  /**
+   * دور هشتم / مورد ۱۱ — `arabicText` is new. The seven weekday dhikrs store a
+   * generic title («ذکر روز شنبه»), so without the Arabic line a history entry
+   * does not say which dhikr was actually said. Optional because every record
+   * written before this round lacks it; dhikrDisplayName.ts recovers those
+   * from the dhikr's id.
+   */
+  breakdown: Record<string, { title: string; count: number; arabicText?: string }>;
 }
 
 export interface UserSettings {
@@ -185,7 +193,9 @@ export function recordDhikrIncrementInDailyLog(
   dhikrId: string,
   dhikrTitle: string,
   delta: number,
-  currentLogs: DailyLog[]
+  currentLogs: DailyLog[],
+  /** مورد ۱۱ — stored so the entry names its own dhikr from now on. */
+  dhikrArabicText?: string
 ): DailyLog[] {
   if (delta === 0) return currentLogs;
   const shamsi = getShamsiDateInfo(new Date());
@@ -203,6 +213,7 @@ export function recordDhikrIncrementInDailyLog(
     breakdown[dhikrId] = {
       title: dhikrTitle,
       count: newEntryCount,
+      arabicText: arabicTextForRecord(dhikrId, dhikrArabicText) ?? prevEntry.arabicText,
     };
 
     const totalCount = Object.values(breakdown).reduce((sum, item) => sum + item.count, 0);
@@ -219,6 +230,7 @@ export function recordDhikrIncrementInDailyLog(
         [dhikrId]: {
           title: dhikrTitle,
           count: delta,
+          arabicText: arabicTextForRecord(dhikrId, dhikrArabicText),
         },
       },
     });

@@ -27,9 +27,16 @@ const TMP = path.join(ROOT, '.tmp-collage');
 const PORT = 4183;
 const VIEWPORT = { width: 390, height: 844 };
 
+// دور نهم / مورد ۲ — no shot in this collage may show the discount buttons.
+//
+// The rule was already here, but it was only applied to the «خانه» shot. The
+// «شمارش ذکر» shot is taken from the counter page, which carries the very same
+// row, so the ready-made story image went out with «کد تخفیف ۳۰ و ۵۰ درصدی» and
+// «کد تخفیف ۱۰۰ درصدی» across the bottom of the biggest phone in the picture.
+// Whoever the user sends it to reads that as «this dhikr app costs money», which
+// is the opposite of what the image is for. Now every shot hides them.
 const HIDE_FOR_STORY_CSS = `
-  /* مورد ۱۹ — the home shot must NOT show the discount buttons, the
-     "تهیه اشتراک ماهانه" button, or the ad slot. */
+  /* مورد ۱۹ / مورد ۲ — no discount buttons, no "تهیه اشتراک ماهانه", no ad slot. */
   [data-testid="discount-buttons-row"],
   [data-testid="home-subscribe-button"],
   [data-testid="ad-placeholder"] { display: none !important; }
@@ -56,7 +63,7 @@ async function openApp(browser, { hideForStory = false } = {}) {
 }
 
 async function shotCounter(browser) {
-  const { context, page } = await openApp(browser);
+  const { context, page } = await openApp(browser, { hideForStory: true });
   await page.getByRole('button', { name: /شمارنده/ }).click();
   await page.waitForTimeout(500);
   const file = path.join(TMP, 'counter.png');
@@ -80,7 +87,7 @@ async function shotHome(browser) {
 }
 
 async function shotStats(browser) {
-  const { context, page } = await openApp(browser);
+  const { context, page } = await openApp(browser, { hideForStory: true });
   await page.getByRole('button', { name: /تاریخچه/ }).click();
   await page.waitForTimeout(300);
   await page.getByText('ریزآمار روزهای گذشته').click();
@@ -109,7 +116,7 @@ async function shotStats(browser) {
 }
 
 async function shotOccasions(browser) {
-  const { context, page } = await openApp(browser);
+  const { context, page } = await openApp(browser, { hideForStory: true });
   await page.getByLabel('اعلانات و مناسبت‌ها').click();
   await page.waitForTimeout(300);
   await page.getByTestId('tab-occasions').click();
@@ -132,9 +139,20 @@ function toDataUri(file) {
   return `data:image/png;base64,${fs.readFileSync(file).toString('base64')}`;
 }
 
+// دور نهم — the collage is built offline like everything else in this project.
+// It used to pull Vazirmatn from Google Fonts, which turns a reproducible build
+// into one that depends on the network reaching a CDN that is unreliable from
+// Iran; the font already lives in the repo.
+const FONT_FACE = (() => {
+  const file = path.join(ROOT, 'src', 'assets', 'fonts', 'Vazirmatn-Bold.woff2');
+  const data = fs.readFileSync(file).toString('base64');
+  return `@font-face { font-family: 'Vazirmatn'; font-weight: 700; font-display: block;
+    src: url(data:font/woff2;base64,${data}) format('woff2'); }`;
+})();
+
 const COMPOSE_HTML = (images) => `<!doctype html>
 <html lang="fa" dir="rtl"><head><meta charset="utf-8" />
-<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@700&display=swap" rel="stylesheet" />
+<style>${FONT_FACE}</style>
 <style>
   * { box-sizing: border-box; margin: 0; }
   body { background: transparent; font-family: 'Vazirmatn', sans-serif; }

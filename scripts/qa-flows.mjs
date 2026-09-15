@@ -98,8 +98,16 @@ async function testCounterShareTextAndImage(browser) {
   check('مورد۶ متن «ذکرهای امروز» با قالب درست', text.startsWith('📿 ذکرهای امروز من — '), text.split('\n')[0]);
   check('مورد۶ خط مجموع در متن هست', /\nمجموع: .* ذکر/.test(text));
   check('مورد۶ خط ستاره و مدال (فقط بالاترین)', text.includes('⭐ ۲۲ ستاره | 🥉 مدال برنز'));
-  check('مورد۴ بدون لینک فروشگاه، جمله با نقطه تمام می‌شود',
-    text.trim().endsWith('تو هم می‌تونی امتحانش کنی.'));
+  // دور نهم — the کافه‌بازار and مایکت addresses are now shipped (they are
+  // derived from the package name and were the reason the story image had no
+  // bottom box), so the invite line ends with a colon and the links follow.
+  // گوگل‌پلی still has none and must stay out of the text entirely.
+  check('مورد۴ بین جمله‌ی دعوت و لینک‌ها یک خط خالی هست',
+    text.includes('تو هم می‌تونی امتحانش کنی:\n\n📥'), text.trim().split('\n').slice(-3).join(' ⏎ '));
+  check('مورد۴ آدرس فروشگاه روی خط خودش می‌آید',
+    /📥 [^\n:]+:\nhttps:\/\//.test(text));
+  check('مورد۴ فروشگاه بدون لینک در متن نمی‌آید',
+    !text.includes('گوگل‌پلی') && !text.includes('مایکت'));
 
   // Generated counter image — captured through the download fallback.
   await page.getByTestId('counter-share-icon').click();

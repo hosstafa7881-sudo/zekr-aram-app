@@ -30,7 +30,13 @@ export function serveDist(root, port = 4173) {
       'Content-Type': TYPES[ext] || 'application/octet-stream',
       'Cache-Control': 'no-store',
     });
-    fs.createReadStream(filePath).pipe(res);
+    // A context closing mid-request aborts the response, and an unhandled
+    // 'error' on the stream then takes the whole test run down after its checks
+    // have already passed — which looks exactly like a failure and is not one.
+    const stream = fs.createReadStream(filePath);
+    stream.on('error', () => res.destroy());
+    res.on('close', () => stream.destroy());
+    stream.pipe(res);
   });
   return new Promise((resolve) => {
     server.listen(port, '127.0.0.1', () => resolve(server));

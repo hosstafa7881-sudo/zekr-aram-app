@@ -244,8 +244,11 @@ function drawStarBadgeRow(
 /** The white box that takes the place of the reset/decrement row. */
 function drawPromoBox(ctx: CanvasRenderingContext2D, y: number, theme: ThemeColors): number {
   const storeSentence = buildStoreNamesSentence();
+  // دور دهم — the «دانلود از …» line was 12px under the tagline, which read as
+  // one cramped block instead of two. A full blank line's worth of space sets
+  // it apart, and the box grows to match.
   const lineCount = storeSentence ? 3 : 2;
-  const height = lineCount === 3 ? 280 : 210;
+  const height = lineCount === 3 ? 310 : 210;
 
   fillRoundRect(ctx, PAD, y, WIDTH - PAD * 2, height, 44, '#ffffff', {
     color: theme.accent,
@@ -265,7 +268,7 @@ function drawPromoBox(ctx: CanvasRenderingContext2D, y: number, theme: ThemeColo
     align: 'center',
   });
   if (storeSentence) {
-    inner += 12;
+    inner += 42;
     drawText(ctx, storeSentence, WIDTH / 2, inner, {
       font: imageFont(700, 32),
       color: theme.accent,

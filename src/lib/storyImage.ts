@@ -111,26 +111,39 @@ function drawTopBox(ctx: CanvasRenderingContext2D, text: string): number {
   return height;
 }
 
+/** Height of the bottom white box — shared with renderStoryCanvas's layout probe. */
+const BOTTOM_BOX_HEIGHT = 330;
+
 /** Bottom white box: store names on the right, a real QR code on the left. Returns 0 when no store has a link yet. */
 function drawBottomBox(ctx: CanvasRenderingContext2D, y: number): number {
   const stores = getAvailableStoreLinks();
   if (stores.length === 0) return 0; // مورد ۱۹: the whole box disappears.
 
-  const height = 300;
+  const height = BOTTOM_BOX_HEIGHT;
   const boxX = MARGIN;
   const boxWidth = STORY_WIDTH - MARGIN * 2;
   fillRoundRect(ctx, boxX, y, boxWidth, height, 48, '#ffffff');
 
   // QR on the LEFT, pointing at Cafe Bazaar when it has a link, otherwise the
-  // first store that does.
+  // first store that does. دور دهم — a «کیوآر کد» caption sits under it, so
+  // the code is lifted to leave room for its own label.
   const qrSize = 210;
+  const qrLabelGap = 10;
+  const qrLabelFont = imageFont(700, 26);
+  const qrLabelHeight = measureLineHeight(ctx, qrLabelFont);
+  const qrBlockHeight = qrSize + qrLabelGap + qrLabelHeight;
   const qrX = boxX + 40;
-  const qrY = y + (height - qrSize) / 2;
+  const qrY = y + (height - qrBlockHeight) / 2;
   const preferred = stores.find((s) => s.id === 'cafebazaar') || stores[0];
   drawQrCode(ctx, preferred.url, qrX, qrY, qrSize, { dark: BRAND_GREEN_DARK });
+  drawText(ctx, 'کیوآر کد', qrX + qrSize / 2, qrY + qrSize + qrLabelGap, {
+    font: qrLabelFont,
+    color: '#5c665c',
+    align: 'center',
+  });
 
   const textRight = boxX + boxWidth - 44;
-  let textY = y + 52;
+  let textY = y + 46;
   textY += drawText(ctx, 'دانلود رایگان از', textRight, textY, {
     font: imageFont(900, 50),
     color: BRAND_GREEN_DARK,
@@ -140,10 +153,18 @@ function drawBottomBox(ctx: CanvasRenderingContext2D, y: number): number {
     font: imageFont(700, 40),
     color: '#2c352c',
   });
-  textY += 12;
-  drawText(ctx, 'یا کد کنار رو با دوربین گوشی اسکن کن', textRight, textY, {
+  // دور دهم — two lines instead of one, the second one bold. On a single line
+  // the sentence crowded the box and the instruction that actually matters
+  // («اسکن کن») got the same weight as the filler around it.
+  textY += 16;
+  textY += drawText(ctx, 'یا کیوآر کد روبرو رو', textRight, textY, {
     font: imageFont(500, 30),
     color: '#5c665c',
+  });
+  textY += 4;
+  drawText(ctx, 'با دوربین گوشیت اسکن کن', textRight, textY, {
+    font: imageFont(800, 30),
+    color: '#3f4a3f',
   });
 
   return height;
@@ -195,7 +216,7 @@ export async function renderStoryCanvas(
 
   // The bottom box is laid out from the bottom up, so the collage gets exactly
   // the space that's left in the middle.
-  const bottomBoxProbeHeight = getAvailableStoreLinks().length > 0 ? 300 : 0;
+  const bottomBoxProbeHeight = getAvailableStoreLinks().length > 0 ? BOTTOM_BOX_HEIGHT : 0;
   const bottomBoxY = STORY_HEIGHT - BOTTOM_SAFE_SPACE - bottomBoxProbeHeight;
   if (bottomBoxProbeHeight > 0) drawBottomBox(ctx, bottomBoxY);
 

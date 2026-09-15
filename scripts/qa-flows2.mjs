@@ -319,13 +319,35 @@ async function testNotifications(browser) {
   await context.close();
 }
 
+/**
+ * دور دهم — «کد تخفیف ۱۰۰ درصدی» is switched OFF for the Cafe Bazaar
+ * submission (src/config/features.ts), so its window cannot be opened and this
+ * scenario cannot run.
+ *
+ * The scenario is kept rather than deleted: the feature is hidden, not removed,
+ * and its coverage has to come back with it. Reading the flag from the source of
+ * truth means flipping that one line restores this test automatically — and the
+ * skip is printed loudly so it can never quietly rot.
+ */
+function referralFeatureEnabled() {
+  const src = fs.readFileSync(path.join(ROOT, 'src/config/features.ts'), 'utf8');
+  return /referralDiscount:\s*true/.test(src);
+}
+
 async function main() {
   fs.mkdirSync(OUT, { recursive: true });
   const server = await serveDist(DIST, PORT);
   const browser = await launchChromium();
+  const referralOn = referralFeatureEnabled();
+  if (!referralOn) {
+    console.log(
+      'SKIP  سناریوی «discount window» — قابلیت «کد تخفیف ۱۰۰ درصدی» فعلاً خاموش است ' +
+        '(src/config/features.ts). با روشن‌کردنش این سناریو خودبه‌خود برمی‌گردد.'
+    );
+  }
   const tests = [
     ['history', testHistory],
-    ['discount window', testDiscountWindow],
+    ...(referralOn ? [['discount window', testDiscountWindow]] : []),
     ['notifications', testNotifications],
   ];
   try {

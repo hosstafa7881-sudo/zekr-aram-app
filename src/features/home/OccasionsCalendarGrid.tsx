@@ -2,7 +2,8 @@ import React, { useMemo, useState } from 'react';
 import { toPersianDigits, getShamsiDateInfo } from '../../utils/persian';
 import { getJalaliMonthDays, shiftJalaliMonth } from '../../utils/jalali';
 import { getHijriDateInfo, formatHijriDate } from '../../utils/hijri';
-import { RELIGIOUS_OCCASIONS, ReligiousOccasion } from '../../data/religiousOccasions';
+import { ReligiousOccasion } from '../../data/religiousOccasions';
+import { getOccasionsOnDate } from '../../lib/occasions';
 import { NATIONAL_HOLIDAYS, NationalHoliday } from '../../data/nationalHolidays';
 import { ChevronRight, ChevronLeft, X, Sparkles, Skull, PartyPopper, CalendarOff } from 'lucide-react';
 
@@ -35,9 +36,9 @@ export const OccasionsCalendarGrid: React.FC = () => {
       monthDays.map((day) => {
         const shamsi = getShamsiDateInfo(day.gregorianDate);
         const hijri = getHijriDateInfo(day.gregorianDate);
-        const occasions = RELIGIOUS_OCCASIONS.filter(
-          (o) => o.hijriMonth === hijri.month && o.hijriDay === hijri.day
-        );
+        // مورد ۱۰ — through the shared resolver, so «آخرین روز ماه» lands on
+        // day 29 or 30 as that year actually has it.
+        const occasions = getOccasionsOnDate(day.gregorianDate);
         const nationalHolidays = NATIONAL_HOLIDAYS.filter(
           (h) => h.jalaliMonth === viewMonth && h.jalaliDay === day.jalaliDay
         );
@@ -187,12 +188,12 @@ export const OccasionsCalendarGrid: React.FC = () => {
                   }`}
                 >
                   <div className="shrink-0 mt-0.5">
-                    {occ.type === 'birth' ? (
-                      <Sparkles className="w-4 h-4 text-[var(--success)]" />
-                    ) : occ.type === 'martyrdom' ? (
+                    {occ.mood === 'happy' ? (
+                      <PartyPopper className="w-4 h-4 text-[var(--accent)]" />
+                    ) : occ.mood === 'sad' ? (
                       <Skull className="w-4 h-4 text-[var(--muted)]" />
                     ) : (
-                      <PartyPopper className="w-4 h-4 text-[var(--accent)]" />
+                      <Sparkles className="w-4 h-4 text-[var(--success)]" />
                     )}
                   </div>
                   <span className="text-xs font-bold text-[var(--text)] leading-relaxed">
